@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /*
+   * Use var() references so Tailwind v4 emits var(--c-*) in utility classes
+   * rather than baking in static hex values.  Overriding --c-* on html.light
+   * then propagates to every element via CSS custom-property inheritance.
+   */
+  --color-base:   var(--c-base);
+  --color-card:   var(--c-card);
+  --color-layer:  var(--c-layer);
+  --color-rim:    var(--c-rim);
+  --color-ink:    var(--c-ink);
+  --color-sub:    var(--c-sub);
+  --color-dim:    var(--c-dim);
+  --color-accent: var(--c-accent);
+}
+
+/* ── Raw design tokens ────────────────────────────────────────────────────── */
+
+:root {
+  /* dark (default) */
+  --c-base:   #06080F;
+  --c-card:   #0D1220;
+  --c-layer:  #1A2540;
+  --c-rim:    #1E2D4A;
+  --c-ink:    #FFFFFF;
+  --c-sub:    #94A3B8;
+  --c-dim:    #64748B;
+  --c-accent: #A78BFA; /* violet-400 */
+}
+
+html.light {
+  color-scheme: light;
+  --c-base:   #F1F5F9;
+  --c-card:   #FFFFFF;
+  --c-layer:  #F8FAFC;
+  --c-rim:    #CBD5E1;
+  --c-ink:    #0F172A;
+  --c-sub:    #1E293B;
+  --c-dim:    #475569;
+  --c-accent: #7C3AED; /* violet-600 */
+}
+
+body {
+  background-color: var(--c-base);
+  color: var(--c-ink);
+  -webkit-font-smoothing: antialiased;
+}
