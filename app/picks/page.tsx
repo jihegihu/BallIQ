@@ -59,8 +59,9 @@ type MatchScore = {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PicksPage() {
-  const [tab, setTab]           = useState<Tab>('pending');
-  const [matchScores, setMatchScores] = useState<Record<string, MatchScore>>({});
+  const [tab, setTab]                   = useState<Tab>('pending');
+  const [matchScores, setMatchScores]   = useState<Record<string, MatchScore>>({});
+  const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(new Set());
 
   const user     = useUserStore((s) => s.user);
   const kFactor  = getKFactor(user.totalPicks, user.weeksActive);
@@ -68,6 +69,28 @@ export default function PicksPage() {
 
   const pending = allPicks.filter((p) => p.outcome === 'pending');
   const results = allPicks.filter((p) => p.outcome !== 'pending' && p.outcome !== 'cancelled' && p.outcome !== 'void');
+
+  const cutoff48h    = Date.now() - 48 * 60 * 60 * 1000;
+  const recentResults = results.filter((p) => new Date(p.placedAt).getTime() > cutoff48h);
+  const olderResults  = results.filter((p) => new Date(p.placedAt).getTime() <= cutoff48h);
+
+  const monthGroupMap = new Map<string, { key: string; label: string; picks: UserPick[] }>();
+  for (const p of olderResults) {
+    const d   = new Date(p.placedAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!monthGroupMap.has(key)) monthGroupMap.set(key, { key, label, picks: [] });
+    monthGroupMap.get(key)!.picks.push(p);
+  }
+  const monthGroups = [...monthGroupMap.values()];
+
+  function toggleMonth(key: string) {
+    setCollapsedMonths((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
 
   // Fetch live/final scores for pending picks
   useEffect(() => {
@@ -271,8 +294,50 @@ export default function PicksPage() {
             <p className="text-sm text-dim">Your settled picks will appear here.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {results.map((p) => <ResultCard key={p.id} pick={p} />)}
+          <div>
+            {/* Recent 48h — shown flat */}
+            {recentResults.length > 0 && (
+              <>
+                {monthGroups.length > 0 && (
+                  <p className="text-[10px] font-black text-dim uppercase tracking-widest mb-2 px-1">Recent</p>
+                )}
+                <div className="flex flex-col gap-2 mb-4">
+                  {recentResults.map((p) => <ResultCard key={p.id} pick={p} />)}
+                </div>
+              </>
+            )}
+
+            {/* Older picks — collapsed by month */}
+            {monthGroups.map(({ key, label, picks }) => {
+              const collapsed = collapsedMonths.has(key);
+              const w   = picks.filter((p) => p.outcome === 'win').length;
+              const l   = picks.filter((p) => p.outcome === 'loss').length;
+              const elo = picks.reduce((s, p) => s + (p.eloDelta ?? 0), 0);
+              return (
+                <div key={key} className="mb-1">
+                  <button
+                    onClick={() => toggleMonth(key)}
+                    className="w-full flex items-center justify-between py-2 px-1 border-b border-rim"
+                  >
+                    <span className="text-[11px] font-black text-sub uppercase tracking-widest">{label}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-emerald-400">{w}W</span>
+                      <span className="text-dim text-[10px]">–</span>
+                      <span className="text-[10px] font-bold text-red-400">{l}L</span>
+                      <span className={`text-[10px] font-bold ml-1.5 tabular-nums ${elo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {elo >= 0 ? '+' : ''}{elo} Elo
+                      </span>
+                      <span className="text-dim text-sm ml-1">{collapsed ? '›' : '⌄'}</span>
+                    </div>
+                  </button>
+                  {!collapsed && (
+                    <div className="flex flex-col gap-2 pt-2 mb-3">
+                      {picks.map((p) => <ResultCard key={p.id} pick={p} />)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )
       )}
