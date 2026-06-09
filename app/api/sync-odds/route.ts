@@ -258,10 +258,29 @@ async function runSync() {
     }
   }
 
+  // ── 3. Auto-void picks placed 72+ hours ago that still couldn't resolve ───────
+  let voided = 0;
+  const voidCutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+  const { data: stalePicks } = await admin
+    .from('user_picks')
+    .select('id')
+    .eq('outcome', 'pending')
+    .lt('placed_at', voidCutoff);
+
+  if (stalePicks && stalePicks.length > 0) {
+    await admin.from('user_picks').update({
+      outcome:     'void',
+      elo_delta:   0,
+      resolved_at: new Date().toISOString(),
+    }).in('id', stalePicks.map((p) => p.id as string));
+    voided = stalePicks.length;
+  }
+
   return NextResponse.json({
     synced:   matches.length,
     resolved,
-    ...(scoresFetchError && { scoresError: scoresFetchError }),
+    ...(voided > 0        && { voided }),
+    ...(scoresFetchError  && { scoresError: scoresFetchError }),
     ...(matches.length === 0 && { message: 'No upcoming matches — season may be off' }),
   });
 }

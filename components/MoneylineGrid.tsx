@@ -60,10 +60,11 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
 
   const kFactor = getKFactor(user.totalPicks, user.weeksActive);
 
+  const upcoming = matches.filter((m) => new Date(m.commenceTime).getTime() > Date.now());
   const visible =
-    sport === 'ALL'    ? matches :
-    sport === 'SOCCER' ? matches.filter((m) => SOCCER_SPORTS.includes(m.sport)) :
-    matches.filter((m) => m.sport === sport);
+    sport === 'ALL'    ? upcoming :
+    sport === 'SOCCER' ? upcoming.filter((m) => SOCCER_SPORTS.includes(m.sport)) :
+    upcoming.filter((m) => m.sport === sport);
 
   function getPendingMoneyline(matchId: string): UserPick | undefined {
     return user.picks.find(

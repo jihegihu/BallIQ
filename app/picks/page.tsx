@@ -67,7 +67,7 @@ export default function PicksPage() {
   const allPicks = [...user.picks].reverse();
 
   const pending = allPicks.filter((p) => p.outcome === 'pending');
-  const results = allPicks.filter((p) => p.outcome !== 'pending' && p.outcome !== 'cancelled');
+  const results = allPicks.filter((p) => p.outcome !== 'pending' && p.outcome !== 'cancelled' && p.outcome !== 'void');
 
   // Fetch live/final scores for pending picks
   useEffect(() => {

@@ -3,7 +3,7 @@
 export type Sport = 'NBA' | 'NFL' | 'MLB' | 'NCAA' | 'EPL' | 'LALIGA' | 'BUNDESLIGA' | 'SERIEA' | 'TENNIS';
 export type BetType = 'moneyline' | 'over_under' | 'spread';
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
-export type PickOutcome = 'win' | 'loss' | 'push' | 'pending' | 'cancelled';
+export type PickOutcome = 'win' | 'loss' | 'push' | 'pending' | 'cancelled' | 'void';
 export type PickSide = 'home' | 'away' | 'over' | 'under';
 
 // What a game looks like
