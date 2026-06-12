@@ -15,6 +15,9 @@ type LeaderRow = {
   tennis_elo: number;
   total_picks: number;
   current_streak: number;
+  wins: number;
+  losses: number;
+  weekly_delta: number;
 };
 
 const TABS: { key: SportTab; label: string }[] = [
@@ -168,7 +171,12 @@ export default function LeaderboardPage() {
                     {row.username ?? 'Player'}
                     {isMe && <span className="ml-1 text-[9px] font-bold opacity-70">(you)</span>}
                   </p>
-                  <p className="text-[10px] text-dim">{rankLabel(elo)} · {row.total_picks} picks</p>
+                  <p className="text-[10px] text-dim">
+                    {rankLabel(elo)} ·{' '}
+                    <span className="text-emerald-400 font-bold">{row.wins}W</span>
+                    <span className="mx-0.5">–</span>
+                    <span className="text-red-400 font-bold">{row.losses}L</span>
+                  </p>
                 </div>
 
                 {/* Streak */}
@@ -176,10 +184,17 @@ export default function LeaderboardPage() {
                   <span className="text-[10px] font-bold text-orange-400">{row.current_streak}🔥</span>
                 )}
 
-                {/* Elo */}
-                <span className={`text-sm font-black tabular-nums shrink-0 ${isMe ? 'text-accent' : 'text-ink'}`}>
-                  {elo?.toLocaleString() ?? '—'}
-                </span>
+                {/* Elo + weekly trend */}
+                <div className="text-right shrink-0">
+                  <p className={`text-sm font-black tabular-nums ${isMe ? 'text-accent' : 'text-ink'}`}>
+                    {elo?.toLocaleString() ?? '—'}
+                  </p>
+                  {row.weekly_delta !== 0 && (
+                    <p className={`text-[10px] font-bold tabular-nums ${row.weekly_delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {row.weekly_delta > 0 ? '▲' : '▼'}{Math.abs(row.weekly_delta)} this week
+                    </p>
+                  )}
+                </div>
               </div>
             );
           })}

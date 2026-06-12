@@ -60,6 +60,7 @@ export type UserPick = {
   eloDelta: number | null;    // null until resolved
   xpEarned: number;
   placedAt: string;
+  resolvedAt?: string | null; // set when the pick settles
 };
 
 // What the user looks like (fake user for Phase 0)

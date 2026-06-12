@@ -127,6 +127,74 @@ async function runSync() {
     }
   }
 
+  // ── 1b. House bot: always picks the moneyline favorite ──────────────────────
+  // "BallIQ Baseline" (created by migration-003) gives the leaderboard a
+  // benchmark — beating it means you out-predict naive favorite-picking.
+  let botPicks = 0;
+  if (matches.length > 0) {
+    const { data: bot } = await admin
+      .from('users')
+      .select('id, global_elo, total_picks, weeks_active, created_at')
+      .eq('clerk_id', 'bot_baseline')
+      .maybeSingle();
+
+    if (bot) {
+      const lockCutoff = Date.now() + 15 * 60 * 1000;
+      const open = matches.filter((m) => new Date(m.commenceTime).getTime() > lockCutoff);
+
+      if (open.length > 0) {
+        const botWeeks = bot.created_at
+          ? Math.max(1, Math.floor((Date.now() - new Date(bot.created_at as string).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1)
+          : Math.max(1, bot.weeks_active as number);
+        const botK = getKFactor(bot.total_picks as number, botWeeks);
+
+        const rows = open.map((m) => {
+          // Lower event Elo = higher implied probability = the favorite
+          const side     = m.eventElos.moneylineHome <= m.eventElos.moneylineAway ? 'home' : 'away';
+          const eventElo = side === 'home' ? m.eventElos.moneylineHome : m.eventElos.moneylineAway;
+          const proj     = calculateEloDelta({
+            userElo: bot.global_elo as number, eventElo, kFactor: botK,
+            confidenceLevel: 'medium', betType: 'moneyline', outcome: 'win',
+          });
+          return {
+            user_id:           bot.id,
+            match_id:          m.id,
+            sport:             m.sport,
+            match_description: `${m.homeTeam} vs ${m.awayTeam}`,
+            spread_line:       m.spreadLine,
+            over_under_line:   m.overUnderLine,
+            bet_type:          'moneyline',
+            pick_side:         side,
+            confidence_level:  'medium',
+            user_elo_at_pick:  bot.global_elo,
+            event_elo:         eventElo,
+            projected_gain:    proj.projectedGain,
+            projected_loss:    proj.projectedLoss,
+            outcome:           'pending',
+            elo_delta:         null,
+            xp_earned:         0,
+            placed_at:         new Date().toISOString(),
+          };
+        });
+
+        // ignoreDuplicates: games the bot already picked are skipped, so only
+        // newly inserted rows come back
+        const { data: inserted } = await admin
+          .from('user_picks')
+          .upsert(rows, { onConflict: 'user_id,match_id,bet_type', ignoreDuplicates: true })
+          .select('id');
+
+        botPicks = inserted?.length ?? 0;
+        if (botPicks > 0) {
+          await admin.from('users').update({
+            total_picks:  (bot.total_picks as number) + botPicks,
+            weeks_active: botWeeks,
+          }).eq('id', bot.id);
+        }
+      }
+    }
+  }
+
   // ── 2. Fetch scores + auto-resolve ALL users' pending picks ─────────────────
   let scoresFetchError = '';
   const scoredGames = await fetchScores([...ALL_SPORTS]).catch((err: Error) => {
@@ -305,6 +373,7 @@ async function runSync() {
   return NextResponse.json({
     synced:   matches.length,
     resolved,
+    ...(botPicks > 0      && { botPicks }),
     ...(voided > 0        && { voided }),
     ...(scoresFetchError  && { scoresError: scoresFetchError }),
     ...(matches.length === 0 && { message: 'No upcoming matches — season may be off' }),

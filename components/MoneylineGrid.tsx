@@ -8,6 +8,8 @@ import { calculatePickXP } from '@/lib/userStore';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
 import { Match, Sport, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
+import RecapBanner from '@/components/RecapBanner';
+import PendingPicksBar from '@/components/PendingPicksBar';
 import { eventEloToProb } from '@/lib/elo';
 
 type SportFilter = Sport | 'ALL' | 'SOCCER';
@@ -133,30 +135,40 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
     finally   { setSyncing(false); }
   }
 
+  const todayLine = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
   return (
-    <div className="min-h-screen pb-24 max-w-md mx-auto px-4 pt-4">
+    <div className={`min-h-screen max-w-md mx-auto px-4 pt-4 ${
+      user.picks.some((p) => p.outcome === 'pending') ? 'pb-40' : 'pb-24'
+    }`}>
 
       {/* Top row: title + sync */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-end justify-between mb-4">
         <div>
           <h1 className="text-2xl font-black text-ink leading-none">
             Ball<span className="text-accent">IQ</span>
           </h1>
-          <p className="text-[10px] text-dim uppercase tracking-widest mt-0.5">Pick Today's Games</p>
+          <p className="text-[11px] text-sub mt-1">
+            {todayLine}
+            <span className="text-dim"> · {upcoming.length} game{upcoming.length !== 1 ? 's' : ''} on the board</span>
+          </p>
         </div>
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="flex items-center gap-1.5 bg-card border border-rim rounded-xl px-3 py-2 text-xs font-bold text-sub hover:border-accent/40 transition disabled:opacity-50"
+          aria-label="Refresh odds and results"
+          className="flex items-center gap-1.5 bg-card border border-rim rounded-full px-3.5 py-2 text-xs font-bold text-sub hover:border-accent/40 hover:text-ink transition disabled:opacity-50"
         >
-          <span className={syncing ? 'animate-spin' : ''}>⟳</span>
-          {syncing ? 'Syncing…' : 'Sync'}
+          <span className={`text-accent ${syncing ? 'animate-spin inline-block' : ''}`}>⟳</span>
+          {syncing ? 'Syncing…' : 'Refresh'}
         </button>
       </div>
 
       {syncMsg && (
-        <p className="text-[11px] text-sub mb-3">{syncMsg}</p>
+        <p className="text-[11px] text-sub mb-3" role="status">{syncMsg}</p>
       )}
+
+      <RecapBanner />
 
       {/* Sport filter */}
       <div className="flex gap-2 mb-5 overflow-x-auto pb-0.5 -mx-4 px-4">
@@ -274,6 +286,8 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
           })}
         </div>
       )}
+
+      <PendingPicksBar />
     </div>
   );
 }

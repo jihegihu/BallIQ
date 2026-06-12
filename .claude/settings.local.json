@@ -3,7 +3,15 @@
     "allow": [
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\Joshua Ihegihu\\\\elo-sports\\\\supabase\")",
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Joshua Ihegihu\\\\elo-sports\" -Recurse -Depth 3 | Where-Object { $_.PSIsContainer } | Select-Object -ExpandProperty FullName | Sort-Object)",
-      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Joshua Ihegihu\\\\elo-sports\" -Name -File -Recurse | Where-Object { $_ -match '\\\\.tsx?$' -and $_ -notmatch 'node_modules|\\\\.next' } | Sort-Object)"
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Joshua Ihegihu\\\\elo-sports\" -Name -File -Recurse | Where-Object { $_ -match '\\\\.tsx?$' -and $_ -notmatch 'node_modules|\\\\.next' } | Sort-Object)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(openssl rand *)",
+      "Read(//dev/**)",
+      "Bash(xxd -p)"
     ]
   }
 }

@@ -41,6 +41,7 @@ function rowToUserPick(
     eloDelta:         row.elo_delta as number | null,
     xpEarned:         row.xp_earned as number,
     placedAt:         row.placed_at as string,
+    resolvedAt:       row.resolved_at as string | null,
   };
 }
 
