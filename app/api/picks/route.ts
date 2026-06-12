@@ -1,11 +1,21 @@
-// GET  /api/picks — load picks + user state for the authenticated user
-// POST /api/picks — persist a new pick to Supabase
+// GET    /api/picks — load picks + user state for the authenticated user
+// POST   /api/picks — persist a new pick (all game-economy values computed server-side)
+// DELETE /api/picks — cancel a pending pick (only before the game locks)
 
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { createAdminClient } from '@/lib/supabase';
 import { getOrCreateUser } from '@/lib/getOrCreateUser';
+import { calculateEloDelta, getKFactor } from '@/lib/elo';
+import { calculateXP, projectStreak } from '@/lib/xp';
 import { UserPick, BetType, PickSide, ConfidenceLevel, PickOutcome, Sport } from '@/types';
+
+// Picks lock 15 minutes before tip-off — same threshold the UI uses.
+const LOCK_WINDOW_MS = 15 * 60 * 1000;
+
+function isLocked(commenceTime: string): boolean {
+  return new Date(commenceTime).getTime() - Date.now() < LOCK_WINDOW_MS;
+}
 
 function rowToUserPick(
   row: Record<string, unknown>,
@@ -98,33 +108,109 @@ export async function GET() {
   });
 }
 
+const VALID_CONFIDENCE = new Set(['low', 'medium', 'high']);
+const VALID_SIDES: Record<string, Set<string>> = {
+  moneyline:  new Set(['home', 'away']),
+  spread:     new Set(['home', 'away']),
+  over_under: new Set(['over', 'under']),
+};
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// The client sends its optimistic pick, but everything that affects the game
+// economy (event Elo, lines, projections, XP) is recomputed here from the DB.
+// Trusting the client for event_elo would let anyone forge high-reward picks.
 export async function POST(req: Request) {
   const { userId: clerkId } = await auth();
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const pick: UserPick = await req.json();
+  const body = await req.json().catch(() => null) as Partial<UserPick> | null;
+  if (!body?.matchId || !body.betType || !body.pickSide) {
+    return NextResponse.json({ saved: false, reason: 'matchId, betType and pickSide are required' }, { status: 400 });
+  }
+
+  const betType         = body.betType as string;
+  const pickSide        = body.pickSide as string;
+  const confidenceLevel = (body.confidenceLevel ?? 'medium') as ConfidenceLevel;
+
+  if (!VALID_SIDES[betType]?.has(pickSide) || !VALID_CONFIDENCE.has(confidenceLevel)) {
+    return NextResponse.json({ saved: false, reason: 'Invalid bet type, side, or confidence' }, { status: 400 });
+  }
+
   const admin  = createAdminClient();
   const userId = await getOrCreateUser(clerkId);
 
+  const [{ data: match }, { data: u }] = await Promise.all([
+    admin.from('matches').select('*').eq('id', body.matchId).single(),
+    admin
+      .from('users')
+      .select('global_elo, total_picks, weeks_active, xp_total, last_pick_date, current_streak, created_at')
+      .eq('id', userId)
+      .single(),
+  ]);
+
+  if (!match) return NextResponse.json({ saved: false, reason: 'Match not found' }, { status: 404 });
+  if (!u)     return NextResponse.json({ saved: false, reason: 'User not found' },  { status: 404 });
+
+  if (isLocked(match.commence_time as string)) {
+    return NextResponse.json({ saved: false, reason: 'Picks are locked for this game' }, { status: 409 });
+  }
+
+  // Server-side event Elo from the synced odds — never from the request body
+  const eventElo: number | null =
+    betType === 'moneyline'  ? (pickSide === 'home' ? match.event_elo_ml_home : match.event_elo_ml_away) :
+    betType === 'spread'     ? (pickSide === 'home' ? match.event_elo_sp_home : match.event_elo_sp_away) :
+    /* over_under */           (pickSide === 'over' ? match.event_elo_over    : match.event_elo_under);
+
+  if (eventElo == null) {
+    return NextResponse.json({ saved: false, reason: 'Odds unavailable for this market' }, { status: 409 });
+  }
+
+  const weeksActive = u.created_at
+    ? Math.max(1, Math.floor((Date.now() - new Date(u.created_at as string).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1)
+    : Math.max(1, u.weeks_active as number);
+  const kFactor = getKFactor(u.total_picks as number, weeksActive);
+
+  const proj = calculateEloDelta({
+    userElo:  u.global_elo as number,
+    eventElo,
+    kFactor,
+    confidenceLevel,
+    betType: betType as BetType,
+    outcome: 'win',
+  });
+
+  const today           = new Date().toISOString().split('T')[0];
+  const projectedStreak = projectStreak(u.last_pick_date as string | null, u.current_streak as number);
+  const xpEarned        = calculateXP({
+    isFirstToday: u.last_pick_date !== today,
+    projectedStreak,
+    betType: betType as BetType,
+    confidenceLevel,
+  });
+
+  // Accept the client's UUID so the optimistic store entry lines up; generate
+  // one otherwise. The PK constraint rejects collisions.
+  const pickId = (typeof body.id === 'string' && UUID_RE.test(body.id)) ? body.id : crypto.randomUUID();
+
   const { error } = await admin.from('user_picks').insert({
-    id:                pick.id,
+    id:                pickId,
     user_id:           userId,
-    match_id:          pick.matchId,
-    sport:             pick.sport,
-    match_description: pick.matchDescription,
-    spread_line:       pick.spreadLine ?? null,
-    over_under_line:   pick.overUnderLine ?? null,
-    bet_type:          pick.betType,
-    pick_side:         pick.pickSide,
-    confidence_level:  pick.confidenceLevel,
-    user_elo_at_pick:  pick.userEloAtPick,
-    event_elo:         pick.eventElo,
-    projected_gain:    pick.projectedGain,
-    projected_loss:    pick.projectedLoss,
-    outcome:           pick.outcome,
-    elo_delta:         pick.eloDelta,
-    xp_earned:         pick.xpEarned,
-    placed_at:         pick.placedAt,
+    match_id:          match.id,
+    sport:             match.sport,
+    match_description: `${match.home_team} vs ${match.away_team}`,
+    spread_line:       match.spread_line,
+    over_under_line:   match.over_under_line,
+    bet_type:          betType,
+    pick_side:         pickSide,
+    confidence_level:  confidenceLevel,
+    user_elo_at_pick:  u.global_elo,
+    event_elo:         eventElo,
+    projected_gain:    proj.projectedGain,
+    projected_loss:    proj.projectedLoss,
+    outcome:           'pending',
+    elo_delta:         null,
+    xp_earned:         xpEarned,
+    placed_at:         new Date().toISOString(),
   });
 
   if (error) {
@@ -132,29 +218,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ saved: false, reason: error.message });
   }
 
-  const today = new Date().toISOString().split('T')[0];
-  const { data: cur } = await admin
-    .from('users')
-    .select('xp_total, total_picks, last_pick_date, current_streak')
-    .eq('id', userId)
-    .single();
+  await admin.from('users').update({
+    xp_total:       (u.xp_total ?? 0) + xpEarned,
+    total_picks:    (u.total_picks ?? 0) + 1,
+    last_pick_date: today,
+    current_streak: projectedStreak,
+    weeks_active:   weeksActive,
+  }).eq('id', userId);
 
-  if (cur) {
-    const yesterday = new Date(Date.now() - 86_400_000).toISOString().split('T')[0];
-    const newStreak =
-      cur.last_pick_date === today     ? cur.current_streak :
-      cur.last_pick_date === yesterday ? cur.current_streak + 1 :
-      1;
-
-    await admin.from('users').update({
-      xp_total:       (cur.xp_total ?? 0) + pick.xpEarned,
-      total_picks:    (cur.total_picks ?? 0) + 1,
-      last_pick_date: today,
-      current_streak: newStreak,
-    }).eq('id', userId);
-  }
-
-  return NextResponse.json({ saved: true });
+  return NextResponse.json({ saved: true, pickId, xpEarned });
 }
 
 export async function DELETE(req: Request) {
@@ -167,12 +239,50 @@ export async function DELETE(req: Request) {
   const admin  = createAdminClient();
   const userId = await getOrCreateUser(clerkId);
 
-  await admin
+  const { data: pick } = await admin
+    .from('user_picks')
+    .select('id, xp_earned, match_id, outcome')
+    .eq('id', pickId)
+    .eq('user_id', userId)
+    .eq('outcome', 'pending')
+    .single();
+
+  if (!pick) return NextResponse.json({ deleted: false, reason: 'Pick not found or already settled' }, { status: 404 });
+
+  // No cancelling once the game locks — otherwise users could free-roll by
+  // dropping losing picks mid-game.
+  const { data: match } = await admin
+    .from('matches')
+    .select('commence_time')
+    .eq('id', pick.match_id)
+    .single();
+
+  if (match && isLocked(match.commence_time as string)) {
+    return NextResponse.json({ deleted: false, reason: 'Game has locked — pick can no longer be cancelled' }, { status: 409 });
+  }
+
+  const { error } = await admin
     .from('user_picks')
     .delete()
     .eq('id', pickId)
     .eq('user_id', userId)
     .eq('outcome', 'pending');
+
+  if (error) return NextResponse.json({ deleted: false, reason: error.message }, { status: 500 });
+
+  // Roll back the XP / pick-count granted at placement (streak is left alone)
+  const { data: cur } = await admin
+    .from('users')
+    .select('xp_total, total_picks')
+    .eq('id', userId)
+    .single();
+
+  if (cur) {
+    await admin.from('users').update({
+      xp_total:    Math.max(0, (cur.xp_total ?? 0) - (pick.xp_earned ?? 0)),
+      total_picks: Math.max(0, (cur.total_picks ?? 0) - 1),
+    }).eq('id', userId);
+  }
 
   return NextResponse.json({ deleted: true });
 }

@@ -2,6 +2,10 @@ import { createAdminClient } from '@/lib/supabase';
 import MoneylineGrid from '@/components/MoneylineGrid';
 import { Match, Sport } from '@/types';
 
+// Without this the page is statically prerendered at build time and the games
+// list (and its time-window filter) is frozen at whatever existed at deploy.
+export const dynamic = 'force-dynamic';
+
 function rowToMatch(row: Record<string, unknown>): Match {
   return {
     id:             row.id as string,

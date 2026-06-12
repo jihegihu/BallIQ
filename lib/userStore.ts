@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { BetType, ConfidenceLevel, User, UserPick } from '@/types';
-import { calculateEloDelta, getKFactor } from './elo';
+import { calculateXP, projectStreak } from './xp';
 
 const DEFAULT_USER: User = {
   id:            '',
@@ -16,30 +16,20 @@ const DEFAULT_USER: User = {
   currentStreak: 0,
 };
 
-// ── XP Calculator ─────────────────────────────────────────────────────────────
+// ── XP Calculator (optimistic client-side estimate; the API recomputes) ──────
 
 export function calculatePickXP(
   user: User,
   betType: BetType,
   confidenceLevel: ConfidenceLevel,
 ): number {
-  const today     = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86_400_000).toISOString().split('T')[0];
-
-  const isFirstToday = !user.picks.some((p) => p.placedAt.startsWith(today));
-
-  const projectedStreak =
-    user.lastPickDate === today     ? user.currentStreak :
-    user.lastPickDate === yesterday ? user.currentStreak + 1 :
-    1;
-
-  let xp = 10;
-  if (isFirstToday)              xp += 25;
-  if (projectedStreak >= 7)      xp += 50;
-  else if (projectedStreak >= 3) xp += 15;
-  if (betType === 'spread')      xp += 5;
-  if (confidenceLevel === 'high') xp += 5;
-  return xp;
+  const today = new Date().toISOString().split('T')[0];
+  return calculateXP({
+    isFirstToday:    !user.picks.some((p) => p.placedAt.startsWith(today)),
+    projectedStreak: projectStreak(user.lastPickDate, user.currentStreak),
+    betType,
+    confidenceLevel,
+  });
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -47,10 +37,23 @@ export function calculatePickXP(
 interface UserStore {
   user: User;
   hydrated: boolean;
-  hydrate:     (picks: UserPick[], userPatch: Partial<User>) => void;
-  submitPick:  (pick: UserPick) => void;
-  cancelPick:  (pickId: string) => void;
-  resolvePick: (pickId: string, outcome: 'win' | 'loss' | 'push') => void;
+  hydrate:    (picks: UserPick[], userPatch: Partial<User>) => void;
+  submitPick: (pick: UserPick) => void;
+  cancelPick: (pickId: string) => void;
+}
+
+// Re-sync local state from the server after a write is rejected, so the
+// optimistic update doesn't leave the UI lying to the user.
+async function rehydrateFromServer() {
+  try {
+    const res  = await fetch('/api/picks');
+    const data = await res.json();
+    if (data.picks !== undefined) {
+      useUserStore.getState().hydrate(data.picks ?? [], data.user ?? {});
+    }
+  } catch (e) {
+    console.warn('[userStore] rehydrate failed:', e);
+  }
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({
@@ -67,14 +70,9 @@ export const useUserStore = create<UserStore>((set, get) => ({
   submitPick: (pick: UserPick) => {
     set((state) => {
       const today     = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 86_400_000).toISOString().split('T')[0];
+      const newStreak = projectStreak(state.user.lastPickDate, state.user.currentStreak);
 
-      const newStreak =
-        state.user.lastPickDate === today     ? state.user.currentStreak :
-        state.user.lastPickDate === yesterday ? state.user.currentStreak + 1 :
-        1;
-
-      const xpEarned  = calculatePickXP(state.user, pick.betType, pick.confidenceLevel);
+      const xpEarned   = calculatePickXP(state.user, pick.betType, pick.confidenceLevel);
       const actualPick = { ...pick, xpEarned };
 
       return {
@@ -93,7 +91,10 @@ export const useUserStore = create<UserStore>((set, get) => ({
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(pick),
-    }).catch((e) => console.warn('[picks] DB write failed:', e));
+    })
+      .then((r) => r.json())
+      .then((data) => { if (!data.saved) rehydrateFromServer(); })
+      .catch((e) => console.warn('[picks] DB write failed:', e));
   },
 
   cancelPick: (pickId: string) => {
@@ -110,44 +111,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }));
 
     fetch(`/api/picks?pickId=${encodeURIComponent(pickId)}`, { method: 'DELETE' })
+      .then((r) => r.json())
+      .then((data) => { if (!data.deleted) rehydrateFromServer(); })
       .catch((e) => console.warn('[cancelPick] DB delete failed:', e));
-  },
-
-  resolvePick: (pickId, outcome) => {
-    const { user } = get();
-    const pick = user.picks.find((p) => p.id === pickId);
-    if (!pick || pick.outcome !== 'pending') return;
-
-    const kFactor = getKFactor(user.totalPicks, user.weeksActive);
-    const result  = calculateEloDelta({
-      userElo:         user.globalElo,
-      eventElo:        pick.eventElo,
-      kFactor,
-      confidenceLevel: pick.confidenceLevel,
-      betType:         pick.betType,
-      outcome,
-    });
-
-    const newSportElos = pick.sport
-      ? { ...user.sportElos, [pick.sport]: Math.max(0, (user.sportElos[pick.sport] ?? 1200) + result.finalEloDelta) }
-      : user.sportElos;
-
-    set((state) => ({
-      user: {
-        ...state.user,
-        globalElo: result.newElo,
-        seasonElo: Math.max(0, state.user.seasonElo + result.finalEloDelta),
-        sportElos: newSportElos,
-        picks: state.user.picks.map((p) =>
-          p.id === pickId ? { ...p, outcome, eloDelta: result.finalEloDelta } : p
-        ),
-      },
-    }));
-
-    fetch('/api/resolve', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ pickId, outcome }),
-    }).catch((e) => console.warn('[resolve] DB write failed:', e));
   },
 }));

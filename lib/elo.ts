@@ -104,10 +104,7 @@ export function calculateEloDelta({
   // Expected score: how likely is this user to beat this event?
   const expectedScore = 1 / (1 + Math.pow(10, (eventElo - userElo) / 400));
 
-  // Actual score: did they win, lose, or push?
-  const actualScore =
-    outcome === 'win'  ? 1 :
-    outcome === 'push' ? 0.5 : 0;
+  const actualScore = outcome === 'win' ? 1 : 0;
 
   // Base Elo change (before multipliers)
   const baseEloDelta = kFactor * (actualScore - expectedScore);
@@ -116,7 +113,11 @@ export function calculateEloDelta({
   const confMult   = CONFIDENCE_MULTIPLIERS[confidenceLevel];
   const spreadMult = getSpreadMultiplier(betType);
 
-  const finalEloDelta = Math.round(baseEloDelta * confMult * spreadMult);
+  // Push = no action (stake returned), matching sportsbook convention.
+  // Scoring it as 0.5 would penalize favorite picks on a tie.
+  const finalEloDelta = outcome === 'push'
+    ? 0
+    : Math.round(baseEloDelta * confMult * spreadMult);
 
   // Floor guard: Elo can never go below 0
   const newElo = Math.max(0, userElo + finalEloDelta);

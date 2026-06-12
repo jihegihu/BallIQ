@@ -155,10 +155,13 @@ export type CompletedGame = {
   sport: Sport;
   homeScore: number;
   awayScore: number;
+  completed: boolean;   // false = game is live (scores present but not final)
 };
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+// Returns every game that has scores — both live and final. Callers that only
+// want final results should filter on `completed`.
 export async function fetchScores(sports: Sport[] = ['NBA', 'NFL', 'MLB']): Promise<CompletedGame[]> {
   const apiKey = process.env.ODDS_API_KEY;
   if (!apiKey) throw new Error('ODDS_API_KEY not configured');
@@ -174,7 +177,7 @@ export async function fetchScores(sports: Sport[] = ['NBA', 'NFL', 'MLB']): Prom
 
         const games: ScoreGame[] = await res.json();
         return games
-          .filter((g) => g.completed && g.scores && g.scores.length >= 2)
+          .filter((g) => g.scores && g.scores.length >= 2)
           .map((g): CompletedGame | null => {
             const home = g.scores!.find((s) => s.name === g.home_team);
             const away = g.scores!.find((s) => s.name === g.away_team);
@@ -182,7 +185,7 @@ export async function fetchScores(sports: Sport[] = ['NBA', 'NFL', 'MLB']): Prom
             const homeScore = parseFloat(home.score);
             const awayScore = parseFloat(away.score);
             if (isNaN(homeScore) || isNaN(awayScore)) return null;
-            return { id: g.id, sport, homeScore, awayScore };
+            return { id: g.id, sport, homeScore, awayScore, completed: g.completed };
           })
           .filter((g): g is CompletedGame => g !== null);
       });

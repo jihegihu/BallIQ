@@ -1,6 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/profile/(.*)']);
+// /api/sync-odds is public at the middleware layer because the Vercel cron job
+// calls it with `Authorization: Bearer CRON_SECRET` (not a Clerk session).
+// The route enforces its own auth: CRON_SECRET for GET, Clerk session for POST.
+const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/profile/(.*)', '/api/sync-odds(.*)']);
 
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {

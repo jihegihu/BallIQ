@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
 
-type Sport = 'global' | 'nba' | 'nfl' | 'mlb' | 'ncaa';
+type SportTab = 'global' | 'nba' | 'nfl' | 'mlb' | 'soccer' | 'tennis';
 type LeaderRow = {
   id: string;
   username: string;
@@ -12,25 +11,28 @@ type LeaderRow = {
   nba_elo: number;
   nfl_elo: number;
   mlb_elo: number;
-  ncaa_elo: number;
+  soccer_elo: number;
+  tennis_elo: number;
   total_picks: number;
   current_streak: number;
 };
 
-const TABS: { key: Sport; label: string }[] = [
+const TABS: { key: SportTab; label: string }[] = [
   { key: 'global', label: 'Global' },
   { key: 'nba',    label: 'NBA'    },
   { key: 'nfl',    label: 'NFL'    },
   { key: 'mlb',    label: 'MLB'    },
-  { key: 'ncaa',   label: 'NCCA'  },
+  { key: 'soccer', label: 'Soccer' },
+  { key: 'tennis', label: 'Tennis' },
 ];
 
-const ELO_KEY: Record<Sport, keyof LeaderRow> = {
+const ELO_KEY: Record<SportTab, keyof LeaderRow> = {
   global: 'global_elo',
   nba:    'nba_elo',
   nfl:    'nfl_elo',
   mlb:    'mlb_elo',
-  ncaa:   'ncaa_elo',
+  soccer: 'soccer_elo',
+  tennis: 'tennis_elo',
 };
 
 const RANK_ICONS = ['🥇', '🥈', '🥉'];
@@ -44,26 +46,30 @@ function rankLabel(elo: number): string {
 }
 
 export default function LeaderboardPage() {
-  const { user: clerkUser } = useUser();
-  const [sport, setSport]   = useState<Sport>('global');
-  const [rows, setRows]     = useState<LeaderRow[]>([]);
+  const [sport, setSport]     = useState<SportTab>('global');
+  const [rows, setRows]       = useState<LeaderRow[]>([]);
+  const [myId, setMyId]       = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState('');
+  const [error, setError]     = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
+    setError('');
     fetch(`/api/leaderboard?sport=${sport}`)
       .then((r) => r.json())
-      .then(({ users, error: e }) => {
+      .then(({ users, myId: me, error: e }) => {
+        if (cancelled) return;
         if (e) { setError(e); return; }
         setRows(users ?? []);
+        setMyId(me ?? null);
       })
-      .catch(() => setError('Failed to load leaderboard'))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!cancelled) setError('Failed to load leaderboard'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [sport]);
 
-  const myUsername = clerkUser?.username ?? clerkUser?.firstName ?? '';
-  const myRank     = rows.findIndex((r) => r.username === myUsername) + 1;
+  const myRank = myId ? rows.findIndex((r) => r.id === myId) + 1 : 0;
 
   return (
     <main className="min-h-screen pb-24 max-w-md mx-auto px-4 pt-4">
@@ -135,9 +141,9 @@ export default function LeaderboardPage() {
       {!loading && !error && rows.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {rows.map((row, idx) => {
-            const elo     = row[ELO_KEY[sport]] as number;
-            const isMe    = row.username === myUsername;
-            const rank    = idx + 1;
+            const elo  = row[ELO_KEY[sport]] as number;
+            const isMe = row.id === myId;
+            const rank = idx + 1;
 
             return (
               <div

@@ -3,6 +3,7 @@
 // Fetches live odds from The-Odds-API, upserts matches, auto-resolves picks.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { fetchOdds, fetchScores, CompletedGame } from '@/lib/odds';
 import { createAdminClient } from '@/lib/supabase';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
@@ -91,7 +92,11 @@ export async function GET(req: NextRequest) {
   return runSync();
 }
 
+// Manual sync from the UI — requires a signed-in user (route is public at the
+// middleware layer so the cron GET can reach it).
 export async function POST() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   return runSync();
 }
 
@@ -124,11 +129,26 @@ async function runSync() {
 
   // ── 2. Fetch scores + auto-resolve ALL users' pending picks ─────────────────
   let scoresFetchError = '';
-  const completedGames = await fetchScores([...ALL_SPORTS]).catch((err: Error) => {
+  const scoredGames = await fetchScores([...ALL_SPORTS]).catch((err: Error) => {
     scoresFetchError = err.message;
     return [] as CompletedGame[];
   });
   let resolved = 0;
+
+  // Persist live + final scores so the picks page can show a real score ticker
+  if (scoredGames.length > 0) {
+    await Promise.all(
+      scoredGames.map((g) =>
+        admin.from('matches').update({
+          home_score: g.homeScore,
+          away_score: g.awayScore,
+          status:     g.completed ? 'completed' : 'live',
+        }).eq('id', g.id),
+      ),
+    );
+  }
+
+  const completedGames = scoredGames.filter((g) => g.completed);
 
   if (completedGames.length > 0) {
     const completedIds = completedGames.map((g) => g.id);
@@ -166,7 +186,7 @@ async function runSync() {
       // Fetch all relevant users in one query
       const { data: usersData } = await admin
         .from('users')
-        .select('id, global_elo, season_elo, total_picks, weeks_active, nba_elo, nfl_elo, mlb_elo, ncaa_elo, soccer_elo, tennis_elo')
+        .select('id, global_elo, season_elo, total_picks, weeks_active, created_at, nba_elo, nfl_elo, mlb_elo, ncaa_elo, soccer_elo, tennis_elo')
         .in('id', [...byUser.keys()]);
       const usersMap = new Map((usersData ?? []).map((u) => [u.id as string, u]));
 
@@ -177,7 +197,12 @@ async function runSync() {
         const userData = usersMap.get(userId);
         if (!userData) continue;
 
-        const kFactor        = getKFactor(userData.total_picks as number, userData.weeks_active as number);
+        // weeks_active is derived from account age — nothing else increments it,
+        // so without this the K-factor would stay at the newcomer maximum forever
+        const weeksActive = userData.created_at
+          ? Math.max(1, Math.floor((Date.now() - new Date(userData.created_at as string).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1)
+          : Math.max(1, userData.weeks_active as number);
+        const kFactor        = getKFactor(userData.total_picks as number, weeksActive);
         let currentElo       = userData.global_elo as number;
         let currentSeasonElo = userData.season_elo as number;
         // Track per-DB-column Elo so multiple soccer leagues accumulate into one column
@@ -235,8 +260,9 @@ async function runSync() {
           allUpdates.push(...userUpdates);
 
           await admin.from('users').update({
-            global_elo: currentElo,
-            season_elo: currentSeasonElo,
+            global_elo:   currentElo,
+            season_elo:   currentSeasonElo,
+            weeks_active: weeksActive,
             ...colElos,
           }).eq('id', userId);
         }
