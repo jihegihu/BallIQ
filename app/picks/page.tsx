@@ -5,6 +5,7 @@ import { useUserStore } from '@/lib/userStore';
 import Link from 'next/link';
 import { UserPick } from '@/types';
 import { calculateEloDelta, getKFactor, eventEloToProb } from '@/lib/elo';
+import TournamentRecaps from '@/components/TournamentRecaps';
 
 type Tab = 'pending' | 'results';
 
@@ -244,6 +245,9 @@ export default function PicksPage() {
           )}
         </>
       )}
+
+      {/* ── Tournament recaps (shown whenever the user has tournament picks) ──── */}
+      <TournamentRecaps picks={user.picks} />
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <div className="flex gap-2 mb-5">

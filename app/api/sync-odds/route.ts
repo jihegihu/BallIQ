@@ -41,11 +41,20 @@ function determineOutcome(
   game: CompletedGame,
   spreadLine: number | null,
   overUnderLine: number | null,
+  resultWinner: 'home' | 'away' | null = null,
 ): 'win' | 'loss' | 'push' | null {
   const margin = game.homeScore - game.awayScore;
 
   if (betType === 'moneyline') {
-    if (margin === 0) return 'push';
+    if (margin === 0) {
+      // Level after regulation/extra time. If an advancing team was recorded
+      // (e.g. a penalty-shootout winner in a knockout tie), credit it; otherwise
+      // it's a genuine draw → push.
+      if (resultWinner === 'home' || resultWinner === 'away') {
+        return pickSide === resultWinner ? 'win' : 'loss';
+      }
+      return 'push';
+    }
     return pickSide === 'home' ? (margin > 0 ? 'win' : 'loss') : (margin < 0 ? 'win' : 'loss');
   }
 
@@ -67,6 +76,16 @@ function determineOutcome(
   return null;
 }
 
+// 2026 World Cup knockout stage begins after the group stage (~June 28). A
+// knockout tie can't end level — a draw after extra time goes to penalties —
+// so we hold those moneyline picks until an advancing team is recorded rather
+// than settling them as a push. Group-stage draws (before this date) are real.
+const WC_KNOCKOUT_START = new Date('2026-06-28T00:00:00Z').getTime();
+
+function penaltiesPossible(sport: string | null, commenceTime: string | null): boolean {
+  return sport === 'WORLDCUP' && !!commenceTime && new Date(commenceTime).getTime() >= WC_KNOCKOUT_START;
+}
+
 // Maps Sport type value → DB column name (soccer leagues share one column)
 const SPORT_COL_MAP: Record<string, string> = {
   NBA:        'nba_elo',
@@ -77,6 +96,7 @@ const SPORT_COL_MAP: Record<string, string> = {
   LALIGA:     'soccer_elo',
   BUNDESLIGA: 'soccer_elo',
   SERIEA:     'soccer_elo',
+  WORLDCUP:   'soccer_elo',
   TENNIS:     'tennis_elo',
 };
 
@@ -108,7 +128,7 @@ async function runSync() {
   const admin = createAdminClient();
 
   // ── 1. Sync upcoming odds ───────────────────────────────────────────────────
-  const ALL_SPORTS = ['NBA', 'NFL', 'MLB', 'EPL', 'LALIGA', 'BUNDESLIGA', 'SERIEA', 'TENNIS'] as const;
+  const ALL_SPORTS = ['NBA', 'NFL', 'MLB', 'EPL', 'LALIGA', 'BUNDESLIGA', 'SERIEA', 'WORLDCUP', 'TENNIS'] as const;
 
   const matches = await fetchOdds([...ALL_SPORTS]).catch((err) => {
     return NextResponse.json({ error: String(err) }, { status: 502 }) as never;
@@ -235,10 +255,15 @@ async function runSync() {
       const matchIds = [...new Set(pendingPicks.map((p) => p.match_id as string))];
       const { data: matchRows } = await admin
         .from('matches')
-        .select('id, spread_line, over_under_line')
+        .select('id, spread_line, over_under_line, commence_time, result_winner')
         .in('id', matchIds);
-      const matchLineMap = new Map(
-        (matchRows ?? []).map((m) => [m.id as string, { spreadLine: m.spread_line as number, overUnderLine: m.over_under_line as number }]),
+      const matchInfoMap = new Map(
+        (matchRows ?? []).map((m) => [m.id as string, {
+          spreadLine:    m.spread_line as number,
+          overUnderLine: m.over_under_line as number,
+          commenceTime:  m.commence_time as string,
+          resultWinner:  (m.result_winner ?? null) as 'home' | 'away' | null,
+        }]),
       );
 
       const gameMap = new Map(completedGames.map((g) => [g.id, g]));
@@ -291,9 +316,23 @@ async function runSync() {
           if (!game) continue;
 
           // Use stored line first; fall back to live match data for older picks
-          const fallback   = matchLineMap.get(pick.match_id as string);
-          const spreadLine    = (pick.spread_line     ?? fallback?.spreadLine    ?? null) as number | null;
-          const overUnderLine = (pick.over_under_line ?? fallback?.overUnderLine ?? null) as number | null;
+          const info   = matchInfoMap.get(pick.match_id as string);
+          const spreadLine    = (pick.spread_line     ?? info?.spreadLine    ?? null) as number | null;
+          const overUnderLine = (pick.over_under_line ?? info?.overUnderLine ?? null) as number | null;
+          const resultWinner  = info?.resultWinner ?? null;
+
+          // Hold a knockout tie's moneyline picks until the advancing team is
+          // recorded (admin sets result_winner; a later sync then settles them).
+          // Leaving them pending — rather than pushing — is what makes a
+          // penalty-shootout winner creditable after the fact.
+          if (
+            pick.bet_type === 'moneyline' &&
+            game.homeScore === game.awayScore &&
+            !resultWinner &&
+            penaltiesPossible(pick.sport as string | null, info?.commenceTime ?? null)
+          ) {
+            continue;
+          }
 
           const outcome = determineOutcome(
             pick.bet_type as string,
@@ -301,6 +340,7 @@ async function runSync() {
             game,
             spreadLine,
             overUnderLine,
+            resultWinner,
           );
           if (outcome === null) continue;
 
@@ -352,22 +392,41 @@ async function runSync() {
     }
   }
 
-  // ── 3. Auto-void picks placed 72+ hours ago that still couldn't resolve ───────
+  // ── 3. Auto-void picks whose game finished 72h+ ago but never resolved ────────
+  // Keyed on the GAME's start time, not when the pick was placed: fixtures are
+  // often known days ahead (e.g. World Cup), so voiding by placement age would
+  // wrongly kill picks before their game is even played.
   let voided = 0;
   const voidCutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
   const { data: stalePicks } = await admin
     .from('user_picks')
-    .select('id')
-    .eq('outcome', 'pending')
-    .lt('placed_at', voidCutoff);
+    .select('id, match_id, placed_at')
+    .eq('outcome', 'pending');
 
   if (stalePicks && stalePicks.length > 0) {
-    await admin.from('user_picks').update({
-      outcome:     'void',
-      elo_delta:   0,
-      resolved_at: new Date().toISOString(),
-    }).in('id', stalePicks.map((p) => p.id as string));
-    voided = stalePicks.length;
+    const staleMatchIds = [...new Set(stalePicks.map((p) => p.match_id as string).filter(Boolean))];
+    const { data: commenceRows } = staleMatchIds.length > 0
+      ? await admin.from('matches').select('id, commence_time').in('id', staleMatchIds)
+      : { data: [] as { id: string; commence_time: string }[] };
+    const commenceMap = new Map((commenceRows ?? []).map((m) => [m.id as string, m.commence_time as string]));
+
+    const toVoid = stalePicks
+      .filter((p) => {
+        const commence = commenceMap.get(p.match_id as string);
+        // Game long over → void. Orphaned pick with no match row → fall back to
+        // placement age so it can't linger forever.
+        return commence ? commence < voidCutoff : (p.placed_at as string) < voidCutoff;
+      })
+      .map((p) => p.id as string);
+
+    if (toVoid.length > 0) {
+      await admin.from('user_picks').update({
+        outcome:     'void',
+        elo_delta:   0,
+        resolved_at: new Date().toISOString(),
+      }).in('id', toVoid);
+      voided = toVoid.length;
+    }
   }
 
   return NextResponse.json({

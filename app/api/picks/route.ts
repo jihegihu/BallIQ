@@ -98,6 +98,7 @@ export async function GET() {
         LALIGA:     (user as any).soccer_elo ?? 1200,
         BUNDESLIGA: (user as any).soccer_elo ?? 1200,
         SERIEA:     (user as any).soccer_elo ?? 1200,
+        WORLDCUP:   (user as any).soccer_elo ?? 1200,
         TENNIS:     (user as any).tennis_elo ?? 1200,
       },
       xpTotal:       user.xp_total,

@@ -11,7 +11,11 @@
       "Bash(npm run *)",
       "Bash(openssl rand *)",
       "Read(//dev/**)",
-      "Bash(xxd -p)"
+      "Bash(xxd -p)",
+      "Bash(node -e ' *)",
+      "Bash(npx next *)",
+      "Bash(curl -s -m 90 \"http://localhost:3199/api/sync-odds\")",
+      "Bash(curl -s -m 120 \"http://localhost:3000/api/sync-odds\")"
     ]
   }
 }

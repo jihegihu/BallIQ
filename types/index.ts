@@ -1,6 +1,6 @@
 // types/index.ts
 
-export type Sport = 'NBA' | 'NFL' | 'MLB' | 'NCAA' | 'EPL' | 'LALIGA' | 'BUNDESLIGA' | 'SERIEA' | 'TENNIS';
+export type Sport = 'NBA' | 'NFL' | 'MLB' | 'NCAA' | 'EPL' | 'LALIGA' | 'BUNDESLIGA' | 'SERIEA' | 'WORLDCUP' | 'TENNIS';
 export type BetType = 'moneyline' | 'over_under' | 'spread';
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
 export type PickOutcome = 'win' | 'loss' | 'push' | 'pending' | 'cancelled' | 'void';

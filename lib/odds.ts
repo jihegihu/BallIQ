@@ -15,6 +15,7 @@ const SPORT_KEYS: Partial<Record<Sport, string | readonly string[]>> = {
   LALIGA:     'soccer_spain_la_liga',
   BUNDESLIGA: 'soccer_germany_bundesliga',
   SERIEA:     'soccer_italy_serie_a',
+  WORLDCUP:   'soccer_fifa_world_cup',
   // Tennis: tries all major tournaments; inactive ones return 404 and are silently skipped
   TENNIS: [
     'tennis_atp_french_open',

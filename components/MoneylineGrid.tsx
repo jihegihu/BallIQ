@@ -14,13 +14,14 @@ import { eventEloToProb } from '@/lib/elo';
 
 type SportFilter = Sport | 'ALL' | 'SOCCER';
 const FILTERS: SportFilter[] = ['ALL', 'NBA', 'NFL', 'MLB', 'SOCCER', 'TENNIS'];
-const SOCCER_SPORTS: Sport[] = ['EPL', 'LALIGA', 'BUNDESLIGA', 'SERIEA'];
+const SOCCER_SPORTS: Sport[] = ['EPL', 'LALIGA', 'BUNDESLIGA', 'SERIEA', 'WORLDCUP'];
 
 const SPORT_LABEL: Partial<Record<Sport, string>> = {
   EPL:        'Premier League',
   LALIGA:     'La Liga',
   BUNDESLIGA: 'Bundesliga',
   SERIEA:     'Serie A',
+  WORLDCUP:   'World Cup',
   TENNIS:     'Tennis',
 };
 function sportName(sport: Sport): string { return SPORT_LABEL[sport] ?? sport; }
