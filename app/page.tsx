@@ -36,7 +36,9 @@ function rowToMatch(row: Record<string, unknown>): Match {
 export default async function HomePage() {
   const admin = createAdminClient();
   const from  = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-  const to    = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  // Only surface games kicking off within the next 36 hours — keeps the board
+  // focused on what's imminent (applies to every sport, World Cup included).
+  const to    = new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await admin
     .from('matches')
