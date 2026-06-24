@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
 
+type Scope = 'global' | 'friends';
 type SportTab = 'global' | 'nba' | 'nfl' | 'mlb' | 'soccer' | 'tennis';
 type LeaderRow = {
   id: string;
@@ -49,28 +50,60 @@ function rankLabel(elo: number): string {
 }
 
 export default function LeaderboardPage() {
+  const [scope, setScope]     = useState<Scope>('global');
   const [sport, setSport]     = useState<SportTab>('global');
   const [rows, setRows]       = useState<LeaderRow[]>([]);
   const [myId, setMyId]       = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
+  // Add-friend controls (friends scope only)
+  const [addInput, setAddInput] = useState('');
+  const [addMsg, setAddMsg]     = useState('');
+  const [busy, setBusy]         = useState(false);
+
+  const loadBoard = useCallback(() => {
     setLoading(true);
     setError('');
-    fetch(`/api/leaderboard?sport=${sport}`)
+    return fetch(`/api/leaderboard?sport=${sport}&scope=${scope}`)
       .then((r) => r.json())
       .then(({ users, myId: me, error: e }) => {
-        if (cancelled) return;
         if (e) { setError(e); return; }
         setRows(users ?? []);
         setMyId(me ?? null);
       })
-      .catch(() => { if (!cancelled) setError('Failed to load leaderboard'); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [sport]);
+      .catch(() => setError('Failed to load leaderboard'))
+      .finally(() => setLoading(false));
+  }, [sport, scope]);
+
+  useEffect(() => { loadBoard(); }, [loadBoard]);
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault();
+    const name = addInput.trim();
+    if (!name || busy) return;
+    setBusy(true);
+    setAddMsg('');
+    try {
+      const res  = await fetch('/api/friends', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: name }),
+      });
+      const data = await res.json();
+      if (data.added) { setAddInput(''); setAddMsg(`Added ${data.friend.username}`); await loadBoard(); }
+      else setAddMsg(data.reason ?? 'Could not add that player');
+    } catch { setAddMsg('Network error'); }
+    finally { setBusy(false); }
+  }
+
+  async function handleRemove(userId: string) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/friends?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' });
+      await loadBoard();
+    } catch { /* ignore — board stays as-is */ }
+    finally { setBusy(false); }
+  }
 
   const myRank = myId ? rows.findIndex((r) => r.id === myId) + 1 : 0;
 
@@ -78,8 +111,50 @@ export default function LeaderboardPage() {
     <main className="min-h-screen pb-24 max-w-md mx-auto px-4 pt-4">
       <div className="mb-4">
         <h1 className="text-2xl font-black text-ink">Rankings</h1>
-        <p className="text-[11px] text-dim mt-0.5">Top 50 by Elo rating</p>
+        <p className="text-[11px] text-dim mt-0.5">
+          {scope === 'friends' ? 'You vs the players you follow' : 'Top 50 by Elo rating'}
+        </p>
       </div>
+
+      {/* Global / Friends scope toggle */}
+      <div className="flex bg-card border border-rim rounded-xl p-1 gap-1 mb-4">
+        {([['global', '🌎 Global'], ['friends', '🤝 Friends']] as [Scope, string][]).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => { setScope(key); setAddMsg(''); }}
+            className={`flex-1 py-2 rounded-lg text-xs font-black transition ${
+              scope === key ? 'bg-violet-600 text-white' : 'text-dim hover:text-sub'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Add-friend form (friends scope) */}
+      {scope === 'friends' && (
+        <form onSubmit={handleAdd} className="mb-4">
+          <div className="flex gap-2">
+            <input
+              value={addInput}
+              onChange={(e) => setAddInput(e.target.value)}
+              placeholder="Add a friend by username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="flex-1 min-w-0 bg-card border border-rim rounded-xl px-3 py-2.5 text-sm text-ink placeholder:text-dim focus:border-accent/50 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={busy || !addInput.trim()}
+              className="shrink-0 bg-violet-600 text-white font-black px-4 rounded-xl text-sm disabled:opacity-40 active:scale-95 transition"
+            >
+              Add
+            </button>
+          </div>
+          {addMsg && <p className="text-[11px] text-sub mt-1.5 px-1">{addMsg}</p>}
+        </form>
+      )}
 
       {/* Your rank banner */}
       {myRank > 0 && (
@@ -134,9 +209,15 @@ export default function LeaderboardPage() {
       {/* Empty */}
       {!loading && !error && rows.length === 0 && (
         <div className="text-center py-16">
-          <p className="text-4xl mb-3">🏆</p>
-          <p className="font-bold text-ink mb-1">No rankings yet</p>
-          <p className="text-sm text-dim">Be the first to make picks and claim the top spot.</p>
+          <p className="text-4xl mb-3">{scope === 'friends' ? '🤝' : '🏆'}</p>
+          <p className="font-bold text-ink mb-1">
+            {scope === 'friends' ? 'No friends yet' : 'No rankings yet'}
+          </p>
+          <p className="text-sm text-dim">
+            {scope === 'friends'
+              ? 'Add players by username above to compare ratings head-to-head.'
+              : 'Be the first to make picks and claim the top spot.'}
+          </p>
         </div>
       )}
 
@@ -195,6 +276,18 @@ export default function LeaderboardPage() {
                     </p>
                   )}
                 </div>
+
+                {/* Unfollow (friends scope, not yourself) */}
+                {scope === 'friends' && !isMe && (
+                  <button
+                    onClick={() => handleRemove(row.id)}
+                    disabled={busy}
+                    aria-label={`Remove ${row.username}`}
+                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-dim hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-40"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             );
           })}
