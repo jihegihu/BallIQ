@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useUser, useClerk } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
 import { useThemeStore } from '@/lib/themeStore';
@@ -20,6 +21,28 @@ export default function AccountPage() {
   const user                          = useUserStore((s) => s.user);
   const { theme, setTheme }           = useThemeStore();
   const openOnboarding                = useOnboardingStore((s) => s.open);
+
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+  const [delErr, setDelErr]         = useState('');
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    setDelErr('');
+    try {
+      const res = await fetch('/api/account', { method: 'DELETE' });
+      if (res.ok) {
+        await signOut({ redirectUrl: '/sign-in' });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setDelErr(data.reason ?? 'Could not delete account. Please try again.');
+        setDeleting(false);
+      }
+    } catch {
+      setDelErr('Network error. Please try again.');
+      setDeleting(false);
+    }
+  }
 
   const resolved   = user.picks.filter((p) => p.outcome !== 'pending' && p.outcome !== 'cancelled');
   const wins       = resolved.filter((p) => p.outcome === 'win').length;
@@ -139,6 +162,14 @@ export default function AccountPage() {
       <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">About</p>
       <div className="bg-card border border-rim rounded-2xl overflow-hidden mb-5">
         <HowItWorks />
+        <Link href="/privacy" className="flex items-center justify-between px-4 py-3 border-t border-rim">
+          <p className="text-sm text-sub">Privacy Policy</p>
+          <span className="text-dim text-xs">›</span>
+        </Link>
+        <Link href="/terms" className="flex items-center justify-between px-4 py-3 border-t border-rim">
+          <p className="text-sm text-sub">Terms of Use</p>
+          <span className="text-dim text-xs">›</span>
+        </Link>
         <div className="flex items-center justify-between px-4 py-3 border-t border-rim">
           <p className="text-sm text-sub">Version</p>
           <p className="text-sm font-bold text-dim">0.1.0 (Beta)</p>
@@ -152,6 +183,42 @@ export default function AccountPage() {
       >
         Sign Out
       </button>
+
+      {/* ── Danger zone: delete account (App Store requirement) ───── */}
+      <div className="mt-3">
+        {!confirmDel ? (
+          <button
+            onClick={() => setConfirmDel(true)}
+            className="w-full text-[11px] font-bold text-dim hover:text-red-400 py-2 transition"
+          >
+            Delete account
+          </button>
+        ) : (
+          <div className="bg-card border border-red-500/30 rounded-2xl p-4">
+            <p className="text-sm font-black text-ink mb-1">Delete your account?</p>
+            <p className="text-[11px] text-dim mb-3">
+              This permanently erases your profile, ratings, picks, and friends. It can&apos;t be undone.
+            </p>
+            {delErr && <p className="text-[11px] text-red-400 mb-2">{delErr}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setConfirmDel(false); setDelErr(''); }}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl border border-rim text-sm font-bold text-sub disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-red-500/90 text-white text-sm font-black disabled:opacity-50 active:scale-95 transition"
+              >
+                {deleting ? 'Deleting…' : 'Delete forever'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
@@ -181,7 +248,7 @@ function HowItWorks() {
             body="Picking a heavy favorite (+500 Elo) earns little on a win but costs a lot on a loss. Upsets flip that — more risk, more reward."
           />
           <Item
-            title="Three ways to bet"
+            title="Three ways to predict"
             body="Moneyline (who wins), Spread (win by enough), Over/Under (total points). Each has its own Elo calculation."
           />
           <Item
@@ -190,7 +257,7 @@ function HowItWorks() {
           />
           <Item
             title="No real money — ever"
-            body="BallIQ is a skill-tracking game, not a gambling platform. There are no deposits, withdrawals, or real-money bets."
+            body="BallIQ is a skill-tracking game, not a gambling platform. There are no deposits, withdrawals, wagers, or cash prizes — ever."
           />
         </div>
       )}

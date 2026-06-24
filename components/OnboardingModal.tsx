@@ -40,7 +40,7 @@ const SLIDES = [
   {
     icon: '🎯',
     title: 'Ready to Pick',
-    subtitle: 'Three ways to bet. One rating to rule them all.',
+    subtitle: 'Three ways to predict. One rating to rule them all.',
     body: null,
     extra: (
       <div className="w-full mt-3 space-y-2.5">

@@ -224,7 +224,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     href={`/matches/${match.id}`}
                     className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[9px] font-semibold"
                   >
-                    All bets <span className="text-xs leading-none">›</span>
+                    All picks <span className="text-xs leading-none">›</span>
                   </Link>
                 </div>
 

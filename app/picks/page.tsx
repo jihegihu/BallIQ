@@ -201,7 +201,7 @@ export default function PicksPage() {
 
           {/* ── By Bet Type ──────────────────────────────────────────────── */}
           <div className="bg-card border border-rim rounded-xl p-3 mb-3">
-            <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">By Bet Type</p>
+            <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">By Pick Type</p>
             <div className="space-y-2">
               {BET_TYPES.filter((bt) => byBetType[bt].total > 0).map((bt) => {
                 const { total, wins: w, elo } = byBetType[bt];
