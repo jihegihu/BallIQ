@@ -16,18 +16,49 @@ const SPORT_KEYS: Partial<Record<Sport, string | readonly string[]>> = {
   BUNDESLIGA: 'soccer_germany_bundesliga',
   SERIEA:     'soccer_italy_serie_a',
   WORLDCUP:   'soccer_fifa_world_cup',
-  // Tennis: tries all major tournaments; inactive ones return 404 and are silently skipped
-  TENNIS: [
-    'tennis_atp_french_open',
-    'tennis_wta_french_open',
-    'tennis_atp_wimbledon',
-    'tennis_wta_wimbledon',
-    'tennis_atp_us_open',
-    'tennis_wta_us_open',
-    'tennis_atp_aus_open',
-    'tennis_wta_aus_open',
-  ],
+  // Tennis keys are resolved dynamically — see activeTennisKeys() below.
+  TENNIS: [],
 };
+
+// Each tennis major runs only a few weeks. Querying all 8 keys year-round burns
+// ~16 API requests per sync on tournaments that aren't active. Return only the
+// keys whose tournament window currently contains `now` (compared as MMDD).
+const TENNIS_MAJORS: { keys: string[]; from: number; to: number }[] = [
+  { keys: ['tennis_atp_aus_open',    'tennis_wta_aus_open'],    from: 110, to: 202 },  // mid-Jan → early Feb
+  { keys: ['tennis_atp_french_open', 'tennis_wta_french_open'], from: 518, to: 609 },  // late-May → early Jun
+  { keys: ['tennis_atp_wimbledon',   'tennis_wta_wimbledon'],   from: 623, to: 714 },  // late-Jun → mid-Jul
+  { keys: ['tennis_atp_us_open',     'tennis_wta_us_open'],     from: 824, to: 909 },  // late-Aug → early Sep
+];
+
+function activeTennisKeys(now: Date = new Date()): string[] {
+  const md = (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
+  return TENNIS_MAJORS.filter((t) => md >= t.from && md <= t.to).flatMap((t) => t.keys);
+}
+
+// All Odds API sport keys to query for a given Sport (tennis is date-gated).
+function keysForSport(sport: Sport): string[] {
+  if (sport === 'TENNIS') return activeTennisKeys();
+  const raw = SPORT_KEYS[sport];
+  if (!raw) return [];
+  return typeof raw === 'string' ? [raw] : [...raw];
+}
+
+// Thrown when the Odds API rejects for quota/auth (HTTP 401/429) — distinct from
+// an inactive tournament (404) so the caller can surface "quota reached" instead
+// of silently behaving as if there were no games.
+export class OddsQuotaError extends Error {
+  constructor(status: number) {
+    super(`Odds API request failed with HTTP ${status} — monthly usage limit likely reached`);
+    this.name = 'OddsQuotaError';
+  }
+}
+
+async function oddsFetch(url: string): Promise<Response | null> {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (res.status === 401 || res.status === 429) throw new OddsQuotaError(res.status);
+  if (!res.ok) return null;  // off-season / inactive tournament — skip silently
+  return res;
+}
 
 // ── Odds API response shape ───────────────────────────────────────────────────
 
@@ -169,12 +200,11 @@ export async function fetchScores(sports: Sport[] = ['NBA', 'NFL', 'MLB']): Prom
 
   const fetches = sports
     .filter((s): s is keyof typeof SPORT_KEYS => s in SPORT_KEYS)
-    .flatMap((sport) => {
-      const raw = SPORT_KEYS[sport]!;
-      return (Array.isArray(raw) ? raw : [raw]).map(async (sportKey) => {
+    .flatMap((sport) =>
+      keysForSport(sport).map(async (sportKey) => {
         const url = `${BASE_URL}/sports/${sportKey}/scores?apiKey=${apiKey}&daysFrom=3`;
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) return [] as CompletedGame[];  // inactive tournament — skip silently
+        const res = await oddsFetch(url);
+        if (!res) return [] as CompletedGame[];  // inactive tournament — skip silently
 
         const games: ScoreGame[] = await res.json();
         return games
@@ -189,10 +219,14 @@ export async function fetchScores(sports: Sport[] = ['NBA', 'NFL', 'MLB']): Prom
             return { id: g.id, sport, homeScore, awayScore, completed: g.completed };
           })
           .filter((g): g is CompletedGame => g !== null);
-      });
-    });
+      }),
+    );
 
   const results = await Promise.allSettled(fetches);
+  // If any request hit the quota/auth wall, surface that rather than pretending
+  // there were simply no completed games (which would silently pause resolution).
+  const quota = results.find((r) => r.status === 'rejected' && (r as PromiseRejectedResult).reason instanceof OddsQuotaError);
+  if (quota) throw (quota as PromiseRejectedResult).reason;
   return results.flatMap((r) => {
     if (r.status === 'rejected') console.warn('[scores] fetch failed:', (r.reason as Error).message);
     return r.status === 'fulfilled' ? r.value : [];
@@ -205,22 +239,23 @@ export async function fetchOdds(sports: Sport[] = ['NBA', 'NFL', 'MLB']): Promis
 
   const fetches = sports
     .filter((s): s is keyof typeof SPORT_KEYS => s in SPORT_KEYS)
-    .flatMap((sport) => {
-      const raw = SPORT_KEYS[sport]!;
-      return (Array.isArray(raw) ? raw : [raw]).map(async (sportKey) => {
+    .flatMap((sport) =>
+      keysForSport(sport).map(async (sportKey) => {
         const url =
           `${BASE_URL}/sports/${sportKey}/odds` +
           `?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`;
 
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) return [] as Match[];  // inactive tournament — skip silently
+        const res = await oddsFetch(url);
+        if (!res) return [] as Match[];  // off-season / inactive tournament — skip silently
 
         const games: OddsGame[] = await res.json();
         return games.map(g => transformGame(g, sport)).filter((m): m is Match => m !== null);
-      });
-    });
+      }),
+    );
 
   const results = await Promise.allSettled(fetches);
+  const quota = results.find((r) => r.status === 'rejected' && (r as PromiseRejectedResult).reason instanceof OddsQuotaError);
+  if (quota) throw (quota as PromiseRejectedResult).reason;
   return results.flatMap(r => {
     if (r.status === 'rejected') console.warn('[odds] fetch failed:', (r.reason as Error).message);
     return r.status === 'fulfilled' ? r.value : [];

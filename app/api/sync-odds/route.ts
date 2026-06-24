@@ -4,10 +4,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { fetchOdds, fetchScores, CompletedGame } from '@/lib/odds';
+import { fetchOdds, fetchScores, CompletedGame, OddsQuotaError } from '@/lib/odds';
 import { createAdminClient } from '@/lib/supabase';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
-import { Match, BetType, ConfidenceLevel } from '@/types';
+import { Match, BetType, ConfidenceLevel, Sport } from '@/types';
 
 function matchToRow(m: Match) {
   return {
@@ -130,11 +130,16 @@ async function runSync() {
   // ── 1. Sync upcoming odds ───────────────────────────────────────────────────
   const ALL_SPORTS = ['NBA', 'NFL', 'MLB', 'EPL', 'LALIGA', 'BUNDESLIGA', 'SERIEA', 'WORLDCUP', 'TENNIS'] as const;
 
-  const matches = await fetchOdds([...ALL_SPORTS]).catch((err) => {
-    return NextResponse.json({ error: String(err) }, { status: 502 }) as never;
-  });
+  // Quota/auth failures are recorded (not thrown) so the response can say so
+  // plainly instead of the app silently behaving as if there were no games.
+  let quotaExhausted: boolean = false;
+  let oddsError = '';
 
-  if (!Array.isArray(matches)) return matches;
+  const matches = await fetchOdds([...ALL_SPORTS]).catch((err) => {
+    if (err instanceof OddsQuotaError) quotaExhausted = true;
+    else oddsError = err?.message ?? String(err);
+    return [] as Match[];
+  });
 
   if (matches.length > 0) {
     const { error } = await admin
@@ -216,11 +221,25 @@ async function runSync() {
   }
 
   // ── 2. Fetch scores + auto-resolve ALL users' pending picks ─────────────────
+  // Only fetch scores for sports that actually have pending picks — the single
+  // biggest lever on Odds API usage. Off-season sports cost zero requests, and
+  // if nothing is pending we skip the scores call entirely.
+  const { data: pendingSportRows } = await admin
+    .from('user_picks')
+    .select('sport')
+    .eq('outcome', 'pending');
+  const pendingSports = [...new Set(
+    (pendingSportRows ?? []).map((r) => r.sport as Sport | null).filter((s): s is Sport => !!s),
+  )];
+
   let scoresFetchError = '';
-  const scoredGames = await fetchScores([...ALL_SPORTS]).catch((err: Error) => {
-    scoresFetchError = err.message;
-    return [] as CompletedGame[];
-  });
+  const scoredGames = pendingSports.length === 0
+    ? []
+    : await fetchScores(pendingSports).catch((err: Error) => {
+        if (err instanceof OddsQuotaError) quotaExhausted = true;
+        else scoresFetchError = err.message;
+        return [] as CompletedGame[];
+      });
   let resolved = 0;
 
   // Persist live + final scores so the picks page can show a real score ticker
@@ -432,9 +451,13 @@ async function runSync() {
   return NextResponse.json({
     synced:   matches.length,
     resolved,
-    ...(botPicks > 0      && { botPicks }),
-    ...(voided > 0        && { voided }),
-    ...(scoresFetchError  && { scoresError: scoresFetchError }),
-    ...(matches.length === 0 && { message: 'No upcoming matches — season may be off' }),
+    ...(botPicks > 0 ? { botPicks } : {}),
+    ...(voided > 0   ? { voided }   : {}),
+    ...(quotaExhausted
+      ? { quotaExhausted: true, error: 'Odds API monthly limit reached — new games and results are paused until the quota resets.' }
+      : oddsError       ? { oddsError }
+      : scoresFetchError ? { scoresError: scoresFetchError }
+      : matches.length === 0 ? { message: 'No upcoming matches — season may be off' }
+      : {}),
   });
 }

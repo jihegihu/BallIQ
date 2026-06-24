@@ -119,6 +119,9 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
       const data = await res.json();
       if (!res.ok) {
         setSyncMsg(`Error: ${data.error ?? res.statusText}`);
+      } else if (data.quotaExhausted) {
+        // Quota wall — say so plainly rather than showing a misleading "0 games"
+        setSyncMsg(data.error);
       } else {
         const parts = [`Synced ${data.synced} match${data.synced !== 1 ? 'es' : ''}`];
         if (data.resolved > 0) parts.push(`resolved ${data.resolved} pick${data.resolved !== 1 ? 's' : ''}`);
