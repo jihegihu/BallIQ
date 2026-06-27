@@ -9,10 +9,9 @@ const config: CapacitorConfig = {
   webDir: 'www',
 
   server: {
-    // ⚠️ REPLACE with your EXACT Vercel production URL before building on the
-    // Mac. Find it in Vercel → your project → Domains (the *.vercel.app entry).
-    // This default is a guess based on the repo name and is probably not exact.
-    url: 'https://balliq.vercel.app',
+    // Canonical production domain. Until balliq.dev finishes DNS propagation you
+    // can temporarily use 'https://ball-iq-phi.vercel.app' for Mac test builds.
+    url: 'https://balliq.dev',
     cleartext: false,
   },
 
