@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.balliq.app',
+  appId: 'dev.balliq.app',
   appName: 'BallIQ',
 
   // The native shell loads the live hosted site (server.url below). `webDir` is
