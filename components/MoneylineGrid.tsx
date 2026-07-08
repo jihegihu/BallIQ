@@ -34,6 +34,14 @@ function fmtOdds(o: number) {
   return o > 0 ? `+${o}` : `${o}`;
 }
 
+function eloTier(elo: number): string {
+  if (elo >= 2000) return 'Elite';
+  if (elo >= 1600) return 'Expert';
+  if (elo >= 1200) return 'Advanced';
+  if (elo >= 800)  return 'Intermediate';
+  return 'Rookie';
+}
+
 function fmtTime(iso: string) {
   try {
     const d        = new Date(iso);
@@ -141,6 +149,14 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
 
   const todayLine = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
+  // Net Elo over the last 7 days, from picks that settled in that window.
+  const weekAgo     = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weeklyDelta = user.picks.reduce((sum, p) => {
+    if (p.eloDelta == null) return sum;
+    const settled = p.resolvedAt ?? p.gameTime;
+    return settled && new Date(settled).getTime() >= weekAgo ? sum + p.eloDelta : sum;
+  }, 0);
+
   return (
     <div className={`min-h-screen max-w-md mx-auto px-4 pt-4 ${
       user.picks.some((p) => p.outcome === 'pending') ? 'pb-40' : 'pb-24'
@@ -152,9 +168,17 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
           <h1 className="text-2xl font-black text-ink leading-none">
             Ball<span className="text-accent">IQ</span>
           </h1>
-          <p className="text-[11px] text-sub mt-1">
-            {todayLine}
-            <span className="text-dim"> · {upcoming.length} game{upcoming.length !== 1 ? 's' : ''} on the board</span>
+          <p className="text-sm font-black mt-1.5 tabular-nums">
+            <span className="text-accent">◆ {user.globalElo.toLocaleString()} Elo</span>
+            {weeklyDelta !== 0 && (
+              <span className={`ml-1.5 text-xs ${weeklyDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {weeklyDelta > 0 ? '▲' : '▼'}{Math.abs(weeklyDelta)} this week
+              </span>
+            )}
+            <span className="ml-1.5 text-xs font-bold text-sub">{eloTier(user.globalElo)}</span>
+          </p>
+          <p className="text-[11px] text-dim mt-0.5">
+            {todayLine} · {upcoming.length} game{upcoming.length !== 1 ? 's' : ''} on the board
           </p>
         </div>
         <button
@@ -210,6 +234,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
             const awayElo  = match.eventElos.moneylineAway;
             const homeProj = calculateEloDelta({ userElo: user.globalElo, eventElo: homeElo, kFactor, confidenceLevel: 'medium', betType: 'moneyline', outcome: 'win' });
             const awayProj = calculateEloDelta({ userElo: user.globalElo, eventElo: awayElo, kFactor, confidenceLevel: 'medium', betType: 'moneyline', outcome: 'win' });
+            const homeProb = Math.round(eventEloToProb(homeElo) * 100);
 
             return (
               <div key={match.id} className="bg-card border border-rim rounded-xl overflow-hidden">
@@ -229,20 +254,15 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                 </div>
 
                 {/* Win probability bar */}
-                {(() => {
-                  const homeProb = Math.round(eventEloToProb(match.eventElos.moneylineHome) * 100);
-                  return (
-                    <div className="px-2.5 pb-0.5 pt-1">
-                      <div className="relative h-1 bg-layer rounded-full overflow-hidden">
-                        <div className="absolute left-0 top-0 h-full bg-accent/50 rounded-full" style={{ width: `${homeProb}%` }} />
-                      </div>
-                      <div className="flex justify-between mt-0.5">
-                        <span className="text-[8px] text-dim">{homeProb}%</span>
-                        <span className="text-[8px] text-dim">{100 - homeProb}%</span>
-                      </div>
-                    </div>
-                  );
-                })()}
+                <div className="px-2.5 pb-0.5 pt-1">
+                  <div className="relative h-1 bg-layer rounded-full overflow-hidden">
+                    <div className="absolute left-0 top-0 h-full bg-accent/50 rounded-full" style={{ width: `${homeProb}%` }} />
+                  </div>
+                  <div className="flex justify-between mt-0.5">
+                    <span className="text-[8px] text-dim">{homeProb}%</span>
+                    <span className="text-[8px] text-dim">{100 - homeProb}%</span>
+                  </div>
+                </div>
 
                 {/* Team buttons */}
                 <div className="grid grid-cols-2">
@@ -250,6 +270,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     const team     = side === 'home' ? match.homeTeam : match.awayTeam;
                     const odds     = side === 'home' ? match.moneylineHome : match.moneylineAway;
                     const proj     = side === 'home' ? homeProj : awayProj;
+                    const prob     = side === 'home' ? homeProb : 100 - homeProb;
                     const selected = pick?.pickSide === side;
 
                     return (
@@ -271,14 +292,15 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                         <p className={`font-black text-xs leading-tight mt-0.5 ${selected ? 'text-accent' : 'text-ink'}`}>
                           {team}
                         </p>
-                        <p className={`text-sm font-black tabular-nums mb-0.5 ${selected ? 'text-violet-300' : 'text-ink'}`}>
-                          {fmtOdds(odds)}
+                        <p className={`text-base font-black tabular-nums leading-tight ${selected ? 'text-violet-300' : 'text-emerald-500'}`}>
+                          ▲ +{proj.projectedGain}
+                          <span className="ml-0.5 text-[9px] font-bold">Elo</span>
+                        </p>
+                        <p className="text-[8px] text-dim tabular-nums mb-0.5">
+                          risk <span className="text-red-500 font-bold">−{proj.projectedLoss}</span>
                         </p>
                         <p className="text-[8px] text-dim tabular-nums">
-                          <span className="text-emerald-500">+{proj.projectedGain}</span>
-                          <span className="mx-0.5 text-rim">/</span>
-                          <span className="text-red-500">-{proj.projectedLoss}</span>
-                          <span className="ml-0.5">Elo</span>
+                          {fmtOdds(odds)} · {prob}% {prob >= 50 ? 'favorite' : 'underdog'}
                         </p>
                         {locked && <span className="mt-0.5 text-[8px] text-dim">Locked</span>}
                       </button>

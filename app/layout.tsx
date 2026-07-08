@@ -3,8 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import DBHydrator from "@/components/DBHydrator";
-import BottomNav from "@/components/BottomNav";
-import EloHeader from "@/components/EloHeader";
+import AppChrome from "@/components/AppChrome";
 import ThemeProvider from "@/components/ThemeProvider";
 import OnboardingModal from "@/components/OnboardingModal";
 
@@ -45,12 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <ThemeProvider>
             <DBHydrator />
             <OnboardingModal />
-            <EloHeader />
-            {/* pt-11 reserves space for the fixed top bar */}
-            <div className="flex-1 pt-11">
-              {children}
-            </div>
-            <BottomNav />
+            <AppChrome>{children}</AppChrome>
           </ThemeProvider>
         </body>
       </html>
