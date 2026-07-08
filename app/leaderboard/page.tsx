@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useUserStore } from '@/lib/userStore';
 
 type Scope = 'global' | 'friends';
 type SportTab = 'global' | 'nba' | 'nfl' | 'mlb' | 'soccer' | 'tennis';
@@ -105,7 +106,8 @@ export default function LeaderboardPage() {
     finally { setBusy(false); }
   }
 
-  const myRank = myId ? rows.findIndex((r) => r.id === myId) + 1 : 0;
+  const myRank     = myId ? rows.findIndex((r) => r.id === myId) + 1 : 0;
+  const totalPicks = useUserStore((s) => s.user.totalPicks);
 
   return (
     <main className="min-h-screen pb-24 max-w-md mx-auto px-4 pt-4">
@@ -157,7 +159,7 @@ export default function LeaderboardPage() {
       )}
 
       {/* Not on the board yet — hook to make a first pick */}
-      {!loading && !error && myRank === 0 && scope === 'global' && (
+      {!loading && !error && myRank === 0 && totalPicks === 0 && scope === 'global' && (
         <a
           href="/"
           className="mb-4 flex items-center gap-3 bg-accent/5 border border-accent/20 rounded-xl px-4 py-3 hover:border-accent/40 transition"

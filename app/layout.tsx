@@ -5,7 +5,6 @@ import "./globals.css";
 import DBHydrator from "@/components/DBHydrator";
 import AppChrome from "@/components/AppChrome";
 import ThemeProvider from "@/components/ThemeProvider";
-import OnboardingModal from "@/components/OnboardingModal";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -43,7 +42,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <body className="min-h-full flex flex-col bg-base">
           <ThemeProvider>
             <DBHydrator />
-            <OnboardingModal />
             <AppChrome>{children}</AppChrome>
           </ThemeProvider>
         </body>
