@@ -156,6 +156,21 @@ export default function LeaderboardPage() {
         </form>
       )}
 
+      {/* Not on the board yet — hook to make a first pick */}
+      {!loading && !error && myRank === 0 && scope === 'global' && (
+        <a
+          href="/"
+          className="mb-4 flex items-center gap-3 bg-accent/5 border border-accent/20 rounded-xl px-4 py-3 hover:border-accent/40 transition"
+        >
+          <span className="text-xl">🎯</span>
+          <div className="flex-1">
+            <p className="text-sm font-black text-ink">You&rsquo;re not on the board yet</p>
+            <p className="text-[11px] text-dim mt-0.5">Make your first pick to enter the rankings.</p>
+          </div>
+          <span className="text-accent font-black">›</span>
+        </a>
+      )}
+
       {/* Your rank banner */}
       {myRank > 0 && (
         <div className="mb-4 bg-accent/5 border border-accent/20 rounded-xl px-4 py-2.5 flex items-center justify-between">

@@ -5,17 +5,42 @@ import { useOnboardingStore } from '@/lib/onboardingStore';
 
 const SLIDES = [
   {
-    icon: '🏆',
-    title: 'Welcome to BallIQ',
-    subtitle: 'Sports picks. Elo ratings.',
-    body: 'BallIQ turns sports prediction into a skill game. No money — just your brain vs the market. The better you read the odds, the higher you climb.',
-    extra: null,
+    icon: '◆',
+    title: 'This Is Your Rating',
+    subtitle: 'Like chess. No money — pure skill.',
+    body: 'Pick winners of real games. Correct picks raise your rating; bold correct picks raise it more. Every game shows exactly what you stand to gain or risk:',
+    extra: (
+      <div className="w-full mt-3">
+        {/* Mock game card mirroring the real board */}
+        <div className="grid grid-cols-2 bg-layer rounded-xl overflow-hidden border border-rim">
+          {[
+            { team: 'Favorite', gain: 8,  risk: 16, sub: '68% favorite' },
+            { team: 'Underdog', gain: 21, risk: 9,  sub: '32% underdog' },
+          ].map(({ team, gain, risk, sub }, i) => (
+            <div key={team} className={`flex flex-col items-center py-3 px-2 ${i === 1 ? 'border-l border-rim' : ''}`}>
+              <p className="font-black text-xs text-ink">{team}</p>
+              <p className="text-base font-black text-emerald-500 tabular-nums mt-0.5">
+                ▲ +{gain}<span className="ml-0.5 text-[9px] font-bold">Elo</span>
+              </p>
+              <p className="text-[9px] text-dim tabular-nums">
+                risk <span className="text-red-400 font-bold">−{risk}</span>
+              </p>
+              <p className="text-[9px] text-dim mt-0.5">{sub}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-[11px] text-sub mt-2.5">
+          Safe pick, small gain. Bold pick, big gain.<br />
+          <span className="text-dim">That&rsquo;s the whole game.</span>
+        </p>
+      </div>
+    ),
   },
   {
-    icon: '◆',
-    title: 'Your Elo Rating',
-    subtitle: 'Difficulty = odds. Reward = accuracy.',
-    body: 'Everyone starts at 1,200 — the chess standard. Pick an underdog right: big gain. Miss a favorite: bigger loss. The market sets how hard each pick is.',
+    icon: '🏆',
+    title: 'Climb the Tiers',
+    subtitle: 'Everyone starts at 1,200 — the chess standard.',
+    body: null,
     extra: (
       <div className="w-full mt-3 space-y-1.5">
         {[
@@ -34,30 +59,9 @@ const SLIDES = [
           </div>
         ))}
         <p className="text-center text-[10px] text-accent font-bold mt-1">You start at Advanced ◆ 1,200</p>
-      </div>
-    ),
-  },
-  {
-    icon: '🎯',
-    title: 'Ready to Pick',
-    subtitle: 'Three ways to predict. One rating to rule them all.',
-    body: null,
-    extra: (
-      <div className="w-full mt-3 space-y-2.5">
-        {[
-          { label: 'Moneyline',   desc: 'Pick which team wins outright.',           icon: '🏅' },
-          { label: 'Spread',      desc: 'Pick a team to win by more than the line.', icon: '📏' },
-          { label: 'Over / Under', desc: 'Predict total points above or below.',     icon: '📊' },
-        ].map(({ label, desc, icon }) => (
-          <div key={label} className="flex items-start gap-3 bg-layer rounded-xl px-3 py-2.5">
-            <span className="text-lg leading-none mt-0.5">{icon}</span>
-            <div>
-              <p className="text-xs font-black text-ink">{label}</p>
-              <p className="text-[11px] text-sub mt-0.5">{desc}</p>
-            </div>
-          </div>
-        ))}
-        <p className="text-[11px] text-dim text-center pt-1">Your Elo updates automatically when games settle.</p>
+        <p className="text-center text-[11px] text-dim pt-1.5">
+          Tap a team to pick. Your rating updates automatically when games end.
+        </p>
       </div>
     ),
   },

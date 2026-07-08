@@ -176,6 +176,9 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
               </span>
             )}
             <span className="ml-1.5 text-xs font-bold text-sub">{eloTier(user.globalElo)}</span>
+            {user.currentStreak > 0 && (
+              <span className="ml-1.5 text-xs font-bold text-orange-400">{user.currentStreak}🔥</span>
+            )}
           </p>
           <p className="text-[11px] text-dim mt-0.5">
             {todayLine} · {upcoming.length} game{upcoming.length !== 1 ? 's' : ''} on the board

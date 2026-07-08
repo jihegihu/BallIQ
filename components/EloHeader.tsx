@@ -22,6 +22,24 @@ function sportEloRank(elo: number) {
   return                  { label: 'Rookie',       color: 'text-sub' };
 }
 
+// Progress toward the next tier threshold; null once Elite (no next tier).
+function nextTierProgress(elo: number) {
+  const TIERS: { at: number; label: string }[] = [
+    { at: 800,  label: 'Intermediate' },
+    { at: 1200, label: 'Advanced' },
+    { at: 1600, label: 'Expert' },
+    { at: 2000, label: 'Elite' },
+  ];
+  const next = TIERS.find((t) => elo < t.at);
+  if (!next) return null;
+  const floor = TIERS[TIERS.indexOf(next) - 1]?.at ?? 0;
+  return {
+    label:   next.label,
+    toGo:    next.at - elo,
+    percent: Math.min(100, Math.max(0, Math.round(((elo - floor) / (next.at - floor)) * 100))),
+  };
+}
+
 export default function EloHeader() {
   const [open, setOpen] = useState(false);
   const user = useUserStore((s) => s.user);
@@ -35,6 +53,7 @@ export default function EloHeader() {
   const biggestWin = resolved.reduce((max, p) => Math.max(max, p.eloDelta ?? 0), 0);
 
   const eloRank      = sportEloRank(user.globalElo);
+  const nextTier     = nextTierProgress(user.globalElo);
   const season       = getCurrentSeason();
   const daysLeft     = season ? getDaysRemaining(season.end) : null;
 
@@ -96,6 +115,24 @@ export default function EloHeader() {
                 )}
               </div>
             </div>
+
+            {/* Next tier progress */}
+            {nextTier && (
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] text-dim uppercase tracking-widest">Next Tier</p>
+                  <p className="text-[11px] font-bold text-sub">
+                    <span className="text-accent font-black">{nextTier.toGo}</span> Elo to {nextTier.label}
+                  </p>
+                </div>
+                <div className="h-2 bg-layer rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${nextTier.percent}%`, background: 'linear-gradient(90deg, #7C3AED, #A78BFA)' }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Season Elo */}
             {season && (
