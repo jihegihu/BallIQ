@@ -12,7 +12,7 @@ workflows:
         certificates:
           - balliq_dist
       vars:
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
         APP_STORE_APPLE_ID: 6785253664
       node: v22.14.0
@@ -28,7 +28,7 @@ workflows:
       - name: Build IPA
         script: |
           xcode-project build-ipa \
-            --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
