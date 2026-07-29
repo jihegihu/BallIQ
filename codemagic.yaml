@@ -10,7 +10,7 @@ workflows:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
         APP_STORE_APPLE_ID: 6785253664
-      node: v20.14.0
+      node: v22.14.0
       xcode: latest
       cocoapods: default
     scripts:
