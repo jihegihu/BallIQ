@@ -25,8 +25,7 @@ workflows:
       - name: Fetch signing files
         script: |
           app-store-connect fetch-signing-files "dev.balliq.app" \
-            --type IOS_APP_STORE \
-            --create
+            --type IOS_APP_STORE
       - name: Add certificates to keychain
         script: keychain add-certificates
       - name: Set up code signing
