@@ -8,7 +8,7 @@ workflows:
     environment:
       ios_signing:
         provisioning_profiles:
-          - BallIQ App Store
+          - balliq_dist
         certificates:
           - balliq_dist
       vars:
