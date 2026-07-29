@@ -6,8 +6,11 @@ workflows:
     integrations:
       app_store_connect: CodeMagic
     environment:
-      groups:
-        - codesigning
+      ios_signing:
+        provisioning_profiles:
+          - BallIQ App Store
+        certificates:
+          - balliq_dist
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
@@ -20,14 +23,6 @@ workflows:
         script: npm install
       - name: Capacitor sync iOS
         script: npx cap sync ios
-      - name: Set up keychain
-        script: keychain initialize
-      - name: Fetch signing files
-        script: |
-          app-store-connect fetch-signing-files "dev.balliq.app" \
-            --type IOS_APP_STORE
-      - name: Add certificates to keychain
-        script: keychain add-certificates
       - name: Set up code signing
         script: xcode-project use-profiles
       - name: Build IPA
