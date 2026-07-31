@@ -1,9 +1,10 @@
-// POST /api/sync-odds  — manual trigger (Sync button in the UI)
-// GET  /api/sync-odds  — Vercel cron job (every 4 hours)
+// GET /api/sync-odds — scheduled trigger only (external cron + Vercel cron).
+// Requires `Authorization: Bearer {CRON_SECRET}`. There is intentionally no
+// manual/UI trigger: every sync spends Odds API credits, so the cadence is
+// controlled entirely by the schedule (see cron config) to stay within budget.
 // Fetches live odds from The-Odds-API, upserts matches, auto-resolves picks.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { fetchOdds, fetchScores, CompletedGame, OddsQuotaError } from '@/lib/odds';
 import { createAdminClient } from '@/lib/supabase';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
@@ -100,23 +101,17 @@ const SPORT_COL_MAP: Record<string, string> = {
   TENNIS:     'tennis_elo',
 };
 
-// Vercel cron calls GET with Authorization: Bearer {CRON_SECRET}
+// Cron calls GET with Authorization: Bearer {CRON_SECRET}. Without a configured
+// secret the endpoint refuses to run rather than defaulting to open — an open
+// sync endpoint is an Odds API credit bomb (anyone could drain the quota).
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get('authorization');
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!secret) {
+    return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 503 });
   }
-  return runSync();
-}
-
-// Manual sync from the UI — requires a signed-in user (route is public at the
-// middleware layer so the cron GET can reach it).
-export async function POST() {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (req.headers.get('authorization') !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   return runSync();
 }
 
