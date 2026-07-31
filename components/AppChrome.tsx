@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import EloHeader from '@/components/EloHeader';
 import BottomNav from '@/components/BottomNav';
 import OnboardingModal from '@/components/OnboardingModal';
+import PushRegistrar from '@/components/PushRegistrar';
 
 // Routes where the app shell (Elo bar + bottom nav) should not render —
 // auth screens and public legal pages viewed by signed-out visitors.
@@ -19,6 +20,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <PushRegistrar />
       <OnboardingModal />
       <EloHeader />
       {/* pt-11 reserves space for the fixed top bar */}

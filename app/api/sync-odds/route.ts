@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchOdds, fetchScores, CompletedGame, OddsQuotaError } from '@/lib/odds';
 import { createAdminClient } from '@/lib/supabase';
+import { sendApnsPush } from '@/lib/apns';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
 import { Match, BetType, ConfidenceLevel, Sport } from '@/types';
 
@@ -299,6 +300,8 @@ async function runSync() {
 
       type ResolvedUpdate = { id: string; outcome: 'win' | 'loss' | 'push'; elo_delta: number };
       const allUpdates: ResolvedUpdate[] = [];
+      // Per-user settle summaries → one push notification each (below).
+      const notifications: { userId: string; net: number; wins: number; losses: number }[] = [];
 
       for (const [userId, userPicks] of byUser) {
         const userData = usersMap.get(userId);
@@ -387,6 +390,13 @@ async function runSync() {
             weeks_active: weeksActive,
             ...colElos,
           }).eq('id', userId);
+
+          notifications.push({
+            userId,
+            net:    userUpdates.reduce((s, u) => s + u.elo_delta, 0),
+            wins:   userUpdates.filter((u) => u.outcome === 'win').length,
+            losses: userUpdates.filter((u) => u.outcome === 'loss').length,
+          });
         }
       }
 
@@ -402,6 +412,41 @@ async function runSync() {
           ),
         );
         resolved = allUpdates.length;
+      }
+
+      // ── 2b. Push "your picks settled" to each affected user ─────────────────
+      // Best-effort: a push failure must never block sync. No-ops when APNs env
+      // vars are unset (e.g. before the iOS build ships).
+      if (notifications.length > 0) {
+        try {
+          const userIds = notifications.map((n) => n.userId);
+          const { data: tokenRows } = await admin
+            .from('push_tokens')
+            .select('token, user_id')
+            .in('user_id', userIds);
+
+          const tokensByUser = new Map<string, string[]>();
+          for (const r of tokenRows ?? []) {
+            const uid = r.user_id as string;
+            const list = tokensByUser.get(uid) ?? [];
+            list.push(r.token as string);
+            tokensByUser.set(uid, list);
+          }
+
+          const dead: string[] = [];
+          for (const n of notifications) {
+            const tokens = tokensByUser.get(n.userId);
+            if (!tokens || tokens.length === 0) continue;
+            const up    = n.net >= 0;
+            const title = up ? `▲ +${n.net} Elo` : `▼ ${n.net} Elo`;
+            const body  = `${n.wins}W–${n.losses}L — your picks settled. Tap to see how you did.`;
+            const res   = await sendApnsPush(tokens, { title, body });
+            dead.push(...res.invalidTokens);
+          }
+          if (dead.length > 0) await admin.from('push_tokens').delete().in('token', dead);
+        } catch (err) {
+          console.warn('[sync-odds] push notify failed:', (err as Error).message);
+        }
       }
     }
   }
