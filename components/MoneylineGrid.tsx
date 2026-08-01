@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
 import { calculatePickXP } from '@/lib/userStore';
@@ -58,16 +57,11 @@ function fmtTime(iso: string) {
 }
 
 export default function MoneylineGrid({ matches }: { matches: Match[] }) {
-  const [sport, setSport]     = useState<SportFilter>('ALL');
-  const [syncing, setSyncing] = useState(false);
-  const [syncMsg, setSyncMsg] = useState('');
-  const [, startTransition]   = useTransition();
-  const router                = useRouter();
+  const [sport, setSport] = useState<SportFilter>('ALL');
 
   const user       = useUserStore((s) => s.user);
   const submitPick = useUserStore((s) => s.submitPick);
   const cancelPick = useUserStore((s) => s.cancelPick);
-  const hydrate    = useUserStore((s) => s.hydrate);
 
   const kFactor = getKFactor(user.totalPicks, user.weeksActive);
 
@@ -119,34 +113,6 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
     submitPick(pick);
   }
 
-  async function handleSync() {
-    setSyncing(true);
-    setSyncMsg('');
-    try {
-      const res  = await fetch('/api/sync-odds', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) {
-        setSyncMsg(`Error: ${data.error ?? res.statusText}`);
-      } else if (data.quotaExhausted) {
-        // Quota wall — say so plainly rather than showing a misleading "0 games"
-        setSyncMsg(data.error);
-      } else {
-        const parts = [`Synced ${data.synced} match${data.synced !== 1 ? 'es' : ''}`];
-        if (data.resolved > 0) parts.push(`resolved ${data.resolved} pick${data.resolved !== 1 ? 's' : ''}`);
-        if (data.scoresError)  parts.push('scores unavailable');
-        setSyncMsg(parts.join(' · '));
-
-        if (data.resolved > 0) {
-          const pr = await fetch('/api/picks');
-          const pd = await pr.json();
-          if (pd.picks !== undefined) hydrate(pd.picks ?? [], pd.user ?? {});
-        }
-        startTransition(() => router.refresh());
-      }
-    } catch { setSyncMsg('Network error'); }
-    finally   { setSyncing(false); }
-  }
-
   const todayLine = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
   // Net Elo over the last 7 days, from picks that settled in that window.
@@ -162,8 +128,8 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
       user.picks.some((p) => p.outcome === 'pending') ? 'pb-40' : 'pb-24'
     }`}>
 
-      {/* Top row: title + sync */}
-      <div className="flex items-end justify-between mb-4">
+      {/* Header: title + rating */}
+      <div className="mb-4">
         <div>
           <h1 className="text-2xl font-black text-ink leading-none">
             Ball<span className="text-accent">IQ</span>
@@ -184,20 +150,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
             {todayLine} · {upcoming.length} game{upcoming.length !== 1 ? 's' : ''} on the board
           </p>
         </div>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          aria-label="Refresh odds and results"
-          className="flex items-center gap-1.5 bg-card border border-rim rounded-full px-3.5 py-2 text-xs font-bold text-sub hover:border-accent/40 hover:text-ink transition disabled:opacity-50"
-        >
-          <span className={`text-accent ${syncing ? 'animate-spin inline-block' : ''}`}>⟳</span>
-          {syncing ? 'Syncing…' : 'Refresh'}
-        </button>
       </div>
-
-      {syncMsg && (
-        <p className="text-[11px] text-sub mb-3" role="status">{syncMsg}</p>
-      )}
 
       <RecapBanner />
 
