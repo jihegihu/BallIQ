@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/lib/userStore';
 import { calculatePickXP } from '@/lib/userStore';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
+import { hapticSuccess } from '@/lib/haptics';
 import { Match, BetType, PickSide, UserPick } from '@/types';
 
 function fmtOdds(o: number) { return o > 0 ? `+${o}` : `${o}`; }
@@ -104,6 +105,7 @@ export default function GameBetTable({ match }: { match: Match }) {
       placedAt:         new Date().toISOString(),
     };
     submitPick(pick);
+    hapticSuccess(); // native-only tactile confirm; no-op on web
   }
 
   return (

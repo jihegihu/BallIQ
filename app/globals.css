@@ -50,3 +50,29 @@ body {
   color: var(--c-ink);
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Native-app feel ──────────────────────────────────────────────────────────
+   Kill the "this is a website" tells inside the iOS/Android webview. These are
+   harmless on the regular web too, so they're unconditional. */
+
+html, body {
+  /* No rubber-band bounce / pull-to-refresh at the page edges. */
+  overscroll-behavior: none;
+}
+
+body {
+  /* No grey flash when tapping buttons/links. */
+  -webkit-tap-highlight-color: transparent;
+  /* Chrome (labels, buttons, nav) shouldn't be text-selectable like a web page.
+     Real content opts back in below. */
+  -webkit-user-select: none;
+  user-select: none;
+  /* No iOS long-press "Copy | Look Up" callout on chrome either. */
+  -webkit-touch-callout: none;
+}
+
+/* Users still need to select/copy real text (inputs always allow it). */
+input, textarea, [contenteditable], p, blockquote, pre, code {
+  -webkit-user-select: text;
+  user-select: text;
+}

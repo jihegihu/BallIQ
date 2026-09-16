@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
 import { calculatePickXP } from '@/lib/userStore';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
+import { hapticSuccess } from '@/lib/haptics';
 import { Match, Sport, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
 import RecapBanner from '@/components/RecapBanner';
@@ -111,6 +112,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
       placedAt:         new Date().toISOString(),
     };
     submitPick(pick);
+    hapticSuccess(); // native-only tactile confirm; no-op on web
   }
 
   const todayLine = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });

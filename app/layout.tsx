@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import DBHydrator from "@/components/DBHydrator";
+import NativeShell from "@/components/NativeShell";
 import AppChrome from "@/components/AppChrome";
 import ThemeProvider from "@/components/ThemeProvider";
 
@@ -41,6 +42,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </head>
         <body className="min-h-full flex flex-col bg-base">
           <ThemeProvider>
+            {/* In root layout (not AppChrome) so splash-hide also runs on bare
+                routes like /sign-in — first screen a fresh install sees. */}
+            <NativeShell />
             <DBHydrator />
             <AppChrome>{children}</AppChrome>
           </ThemeProvider>
