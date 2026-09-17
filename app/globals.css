@@ -76,3 +76,15 @@ input, textarea, [contenteditable], p, blockquote, pre, code {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* ── Sheet / overlay animations ──────────────────────────────────────────── */
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

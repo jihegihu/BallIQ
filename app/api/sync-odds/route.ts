@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchOdds, fetchScores, CompletedGame, OddsQuotaError } from '@/lib/odds';
+import { fetchGameDetails } from '@/lib/espn';
 import { createAdminClient } from '@/lib/supabase';
 import { sendApnsPush } from '@/lib/apns';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
@@ -145,6 +146,25 @@ async function runSync() {
     if (error) {
       console.error('[sync-odds] upsert error:', error.message);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // ── 1a. ESPN enrichment (free, best-effort) ─────────────────────────────
+    // Team records, venue, broadcast from ESPN's public scoreboard. Zero Odds
+    // API credits; any failure just leaves the columns null.
+    try {
+      const details = await fetchGameDetails(matches);
+      await Promise.all(
+        [...details.entries()].map(([id, d]) =>
+          admin.from('matches').update({
+            home_record: d.homeRecord ?? null,
+            away_record: d.awayRecord ?? null,
+            venue:       d.venue ?? null,
+            broadcast:   d.broadcast ?? null,
+          }).eq('id', id),
+        ),
+      );
+    } catch (err) {
+      console.warn('[sync-odds] espn enrichment failed:', err);
     }
   }
 

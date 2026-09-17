@@ -38,6 +38,12 @@ export type Match = {
   // Final scores (only filled after game ends)
   homeScore?: number;
   awayScore?: number;
+
+  // Free game details from ESPN (best-effort, may be absent)
+  homeRecord?: string;        // e.g. "12-4"
+  awayRecord?: string;
+  venue?: string;             // e.g. "TD Garden"
+  broadcast?: string;         // e.g. "ESPN"
 };
 
 // What a pick looks like — named UserPick to avoid collision with TS built-in Pick<T,K>

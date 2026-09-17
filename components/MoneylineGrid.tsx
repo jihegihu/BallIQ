@@ -5,12 +5,25 @@ import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
 import { calculatePickXP } from '@/lib/userStore';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
-import { hapticSuccess } from '@/lib/haptics';
+import { hapticSuccess, hapticImpact } from '@/lib/haptics';
+import { useLongPress } from '@/lib/useLongPress';
 import { Match, Sport, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
 import RecapBanner from '@/components/RecapBanner';
 import PendingPicksBar from '@/components/PendingPicksBar';
+import BetSheet from '@/components/BetSheet';
 import { eventEloToProb } from '@/lib/elo';
+
+// Hook-per-card wrapper (hooks can't be called inside .map). Long-pressing
+// anywhere on a game card opens the full BetSheet with a haptic thump.
+function LongPressCard({ onLongPress, children }: { onLongPress: () => void; children: React.ReactNode }) {
+  const handlers = useLongPress(() => { hapticImpact('medium'); onLongPress(); });
+  return (
+    <div {...handlers} className="bg-card border border-rim rounded-xl overflow-hidden select-none">
+      {children}
+    </div>
+  );
+}
 
 type SportFilter = Sport | 'ALL' | 'SOCCER';
 const FILTERS: SportFilter[] = ['ALL', 'NBA', 'NFL', 'MLB', 'SOCCER', 'TENNIS'];
@@ -58,7 +71,8 @@ function fmtTime(iso: string) {
 }
 
 export default function MoneylineGrid({ matches }: { matches: Match[] }) {
-  const [sport, setSport] = useState<SportFilter>('ALL');
+  const [sport, setSport]           = useState<SportFilter>('ALL');
+  const [sheetMatch, setSheetMatch] = useState<Match | null>(null);
 
   const user       = useUserStore((s) => s.user);
   const submitPick = useUserStore((s) => s.submitPick);
@@ -183,6 +197,10 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
           <p className="text-sm text-dim">Try syncing or check another sport.</p>
         </div>
       ) : (
+        <>
+        <p className="text-[10px] text-dim mb-2 px-0.5">
+          Tap a team to pick the winner · hold a card for spread &amp; totals
+        </p>
         <div className="flex flex-col gap-1.5">
           {visible.map((match) => {
             const pick   = getPendingMoneyline(match.id);
@@ -195,7 +213,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
             const homeProb = Math.round(eventEloToProb(homeElo) * 100);
 
             return (
-              <div key={match.id} className="bg-card border border-rim rounded-xl overflow-hidden">
+              <LongPressCard key={match.id} onLongPress={() => setSheetMatch(match)}>
                 {/* Header */}
                 <div className="flex items-center justify-between px-2.5 py-1 bg-layer border-b border-rim">
                   <div className="flex items-center gap-1">
@@ -207,7 +225,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     href={`/matches/${match.id}`}
                     className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[9px] font-semibold"
                   >
-                    All picks <span className="text-xs leading-none">›</span>
+                    More bets <span className="text-xs leading-none">›</span>
                   </Link>
                 </div>
 
@@ -265,11 +283,15 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     );
                   })}
                 </div>
-              </div>
+              </LongPressCard>
             );
           })}
         </div>
+        </>
       )}
+
+      {/* Long-press bet sheet */}
+      {sheetMatch && <BetSheet match={sheetMatch} onClose={() => setSheetMatch(null)} />}
 
       <PendingPicksBar />
     </div>
