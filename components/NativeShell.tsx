@@ -22,6 +22,10 @@ export default function NativeShell() {
         const { Capacitor } = await import('@capacitor/core');
         if (!Capacitor.isNativePlatform()) return;
 
+        // Native-only CSS hooks (scrollbar hiding etc.) key off this class —
+        // regular browsers keep their scrollbars.
+        document.documentElement.classList.add('native');
+
         const { SplashScreen } = await import('@capacitor/splash-screen');
         // React has mounted and painted — safe to reveal the app.
         await SplashScreen.hide();

@@ -141,7 +141,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
 
   return (
     <div className={`min-h-screen max-w-md mx-auto px-4 pt-4 ${
-      user.picks.some((p) => p.outcome === 'pending') ? 'pb-40' : 'pb-24'
+      user.picks.some((p) => p.outcome === 'pending') ? 'pb-44' : 'pb-28'
     }`}>
 
       {/* Header: title + rating */}

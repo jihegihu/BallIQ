@@ -47,7 +47,11 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-rim">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-rim"
+      // paddingBottom keeps the tabs above the iPhone home-indicator area
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div className="flex max-w-md mx-auto h-16">
         {NAV_ITEMS.map(({ href, label, type }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href);

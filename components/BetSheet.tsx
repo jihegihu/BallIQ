@@ -33,7 +33,10 @@ export default function BetSheet({ match, onClose }: { match: Match; onClose: ()
           <div className="w-9 h-1 rounded-full bg-rim" />
         </div>
 
-        <div className="overflow-y-auto overscroll-contain px-4 pb-8 pt-2">
+        <div
+          className="overflow-y-auto overscroll-contain px-4 pt-2"
+          style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+        >
           <MatchHeader match={match} compact />
           <div className="mt-4">
             <BetPanel match={match} />

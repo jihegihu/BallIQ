@@ -29,9 +29,10 @@ const config: CapacitorConfig = {
   },
 
   ios: {
-    contentInset: 'always',
-    // Kill the iOS webview rubber-band bounce at the page edges — the single
-    // biggest "this is a website" tell.
+    // 'never' + viewport-fit=cover + CSS env(safe-area-inset-*) padding makes
+    // the page truly edge-to-edge. ('always' inset the whole page into a
+    // scrollable rectangle with black gaps above/below it.)
+    contentInset: 'never',
     scrollEnabled: true,
   },
 

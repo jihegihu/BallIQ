@@ -6,7 +6,7 @@ export const metadata = { title: 'Privacy Policy · BallIQ' };
 // app stores, have it reviewed and replace the [bracketed] placeholders.
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen max-w-md mx-auto px-5 pt-6 pb-24">
+    <main className="min-h-screen max-w-md mx-auto px-5 pt-6 pb-28">
       <Link href="/account" className="text-sub hover:text-ink text-sm">‹ Back</Link>
       <h1 className="text-2xl font-black text-ink mt-3 mb-1">Privacy Policy</h1>
       <p className="text-[11px] text-dim mb-6">Last updated: June 2026</p>

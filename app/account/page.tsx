@@ -62,7 +62,7 @@ export default function AccountPage() {
     : null;
 
   return (
-    <main className="min-h-screen pb-24 max-w-md mx-auto px-4 pt-6">
+    <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-6">
       <h1 className="text-2xl font-black text-ink mb-6">Account</h1>
 
       {/* ── Profile ──────────────────────────────────────────────── */}

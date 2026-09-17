@@ -110,7 +110,7 @@ export default function LeaderboardPage() {
   const totalPicks = useUserStore((s) => s.user.totalPicks);
 
   return (
-    <main className="min-h-screen pb-24 max-w-md mx-auto px-4 pt-4">
+    <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
       <div className="mb-4">
         <h1 className="text-2xl font-black text-ink">Rankings</h1>
         <p className="text-[11px] text-dim mt-0.5">

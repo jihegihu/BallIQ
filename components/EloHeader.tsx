@@ -60,7 +60,11 @@ export default function EloHeader() {
   return (
     <>
       {/* Fixed top bar */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-base/95 backdrop-blur-sm border-b border-rim">
+      {/* paddingTop extends the bar's background up under the iPhone notch */}
+      <div
+        className="fixed top-0 left-0 right-0 z-40 bg-base/95 backdrop-blur-sm border-b border-rim"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="max-w-md mx-auto px-4 h-11 flex items-center justify-end">
           <button
             onClick={() => setOpen(true)}

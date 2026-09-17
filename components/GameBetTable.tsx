@@ -13,7 +13,7 @@ export default function GameBetTable({ match }: { match: Match }) {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen pb-24 max-w-md mx-auto px-4 pt-4">
+    <div className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
       {/* Back */}
       <button
         onClick={() => router.back()}

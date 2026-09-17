@@ -77,6 +77,18 @@ input, textarea, [contenteditable], p, blockquote, pre, code {
   user-select: text;
 }
 
+/* Inside the native app (html.native set by NativeShell) there must be no
+   web-style scrollbars anywhere. Browsers keep theirs. */
+html.native ::-webkit-scrollbar,
+html.native::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+html.native, html.native body {
+  scrollbar-width: none; /* future-proofing; WKWebView is WebKit but harmless */
+}
+
 /* ── Sheet / overlay animations ──────────────────────────────────────────── */
 
 @keyframes sheetUp {
