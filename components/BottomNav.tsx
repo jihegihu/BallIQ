@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { hapticImpact } from '@/lib/haptics';
 
 function NavIcon({ type, active }: { type: string; active: boolean }) {
   const cls = `w-[22px] h-[22px] transition-colors ${active ? 'text-accent' : 'text-dim'}`;
@@ -54,6 +55,7 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
+              onClick={() => hapticImpact('light')}
               className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors
                 ${active ? 'text-accent' : 'text-dim hover:text-sub'}`}
             >

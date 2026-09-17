@@ -26,7 +26,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        // Kill the WKWebView rubber-band bounce and web-style scrollbar — the
+        // remaining "this is a website" tells. CSS overscroll-behavior can't
+        // fully stop the native scroll view; this can. Runs on every
+        // foreground, which is harmlessly idempotent and guarantees the web
+        // view exists by the time we touch it.
+        if let vc = window?.rootViewController as? CAPBridgeViewController,
+           let scrollView = vc.webView?.scrollView {
+            scrollView.bounces = false
+            scrollView.alwaysBounceVertical = false
+            scrollView.showsVerticalScrollIndicator = false
+            scrollView.showsHorizontalScrollIndicator = false
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
