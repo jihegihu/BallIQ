@@ -203,8 +203,8 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
         </div>
       ) : (
         <>
-        <p className="text-[11px] text-dim mb-2.5 px-0.5">
-          Hold a team to lock your pick · hold the card header for spread &amp; totals
+        <p className="text-[11px] text-dim mb-2 px-0.5">
+          Press and hold a team to lock it in · hold the card header for spread &amp; totals
         </p>
         <div className="flex flex-col gap-1.5">
           {visible.map((match) => {
@@ -236,13 +236,13 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                 </div>
 
                 {/* Win probability bar */}
-                <div className="px-3.5 pb-1 pt-2.5">
-                  <div className="relative h-1.5 bg-layer rounded-full overflow-hidden">
+                <div className="px-2.5 pb-0.5 pt-1">
+                  <div className="relative h-1 bg-layer rounded-full overflow-hidden">
                     <div className="absolute left-0 top-0 h-full bg-accent/50 rounded-full" style={{ width: `${homeProb}%` }} />
                   </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-[10px] text-dim tabular-nums">{homeProb}%</span>
-                    <span className="text-[10px] text-dim tabular-nums">{100 - homeProb}%</span>
+                  <div className="flex justify-between mt-0.5">
+                    <span className="text-[8px] text-dim tabular-nums">{homeProb}%</span>
+                    <span className="text-[8px] text-dim tabular-nums">{100 - homeProb}%</span>
                   </div>
                 </div>
 
@@ -262,30 +262,29 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                         disabled={locked}
                         onCommit={() => placeMoneyline(match, side)}
                         onRemove={() => { const p = getPendingMoneyline(match.id); if (p) cancelPick(p.id); }}
-                        className={`flex flex-col items-center py-4 px-1.5 transition-colors ${
+                        className={`flex flex-col items-center py-2 px-1.5 transition-colors ${
                           side === 'away' ? 'border-l border-rim' : ''
                         } ${locked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-layer'}`}
                         selectedClassName="bg-pick/15 ring-1 ring-inset ring-pick/50"
                       >
                         <TeamAvatar teamName={team} size="xs" />
-                        <p className={`font-black text-sm leading-tight mt-1.5 ${selected ? 'text-pick' : 'text-ink'}`}>
+                        <p className={`font-black text-xs leading-tight mt-0.5 ${selected ? 'text-pick' : 'text-ink'}`}>
                           {team}
                         </p>
-                        <p className={`text-lg font-black tabular-nums leading-tight mt-0.5 ${selected ? 'text-pick' : 'text-emerald-500'}`}>
+                        <p className={`text-base font-black tabular-nums leading-tight ${selected ? 'text-pick' : 'text-emerald-500'}`}>
                           ▲ +{proj.projectedGain}
-                          <span className="ml-0.5 text-[10px] font-bold">Elo</span>
+                          <span className="ml-0.5 text-[9px] font-bold">Elo</span>
                         </p>
-                        <p className="text-[10px] text-dim tabular-nums mb-0.5">
+                        <p className="text-[8px] text-dim tabular-nums mb-0.5">
                           risk <span className="text-red-500 font-bold">−{proj.projectedLoss}</span>
                         </p>
-                        <p className="text-[10px] text-dim tabular-nums">
+                        <p className="text-[8px] text-dim tabular-nums">
                           {fmtOdds(odds)} · {prob}% {prob >= 50 ? 'favorite' : 'underdog'}
                         </p>
-                        {locked
-                          ? <span className="mt-1 text-[10px] text-dim">Locked</span>
-                          : <span className={`mt-1 text-[9px] font-bold uppercase tracking-widest ${selected ? 'text-pick' : 'text-dim'}`}>
-                              {selected ? 'Tap to undo' : 'Hold to pick'}
-                            </span>}
+                        {/* No per-button hint here — the list header already
+                            explains the gesture, and an extra line is exactly
+                            the height this card can't spare. */}
+                        {locked && <span className="mt-0.5 text-[8px] text-dim">Locked</span>}
                       </HoldToPick>
                     );
                   })}

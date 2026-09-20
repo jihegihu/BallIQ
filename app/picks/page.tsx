@@ -265,13 +265,22 @@ export default function PicksPage() {
                   </div>
                 </div>
               )}
+
+              {/* Tournament recaps live inside the dropdown too — they're
+                  retrospective stats, not something to scroll past on the way
+                  to your live picks. */}
+              <div className="mt-2">
+                <TournamentRecaps picks={user.picks} />
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ── Tournament recaps (shown whenever the user has tournament picks) ──── */}
-      <TournamentRecaps picks={user.picks} />
+      {/* With no settled picks there's no stats dropdown to tuck these into,
+          but tournament picks still in flight are worth surfacing. Renders
+          nothing when the user has no tournament picks at all. */}
+      {results.length === 0 && <TournamentRecaps picks={user.picks} />}
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <div className="flex gap-2 mb-5">

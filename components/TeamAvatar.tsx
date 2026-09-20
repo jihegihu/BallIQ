@@ -8,16 +8,20 @@ interface Props {
   size?: 'xs' | 'sm' | 'md';
 }
 
-// Roughly 2x the old sizes (was 24 / 32 / 40px). Real team logos now read as
-// the hero of a card instead of a token.
+// Was 24 / 32 / 40px. `sm` and `md` (match detail page, bet sheet) get the
+// full ~2x — there's room there and the logo is the hero.
+//
+// `xs` is the dense games list, where every pixel of avatar is a pixel of
+// card height: it stays modest at 1.33x so the board keeps its original
+// compact rhythm.
 const DIM: Record<NonNullable<Props['size']>, string> = {
-  xs: 'w-12 h-12',      // 48px
+  xs: 'w-8 h-8',        // 32px
   sm: 'w-16 h-16',      // 64px
   md: 'w-20 h-20',      // 80px
 };
 
 const ABBR_TEXT: Record<NonNullable<Props['size']>, string> = {
-  xs: 'text-[11px]',
+  xs: 'text-[9px]',
   sm: 'text-sm',
   md: 'text-base',
 };

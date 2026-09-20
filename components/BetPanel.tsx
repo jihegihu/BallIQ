@@ -10,7 +10,7 @@ import { useUserStore, calculatePickXP } from '@/lib/userStore';
 import { calculateEloDelta, getKFactor, eventEloToProb } from '@/lib/elo';
 import { Match, BetType, PickSide, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
-import HoldToPick, { HOLD_MS } from '@/components/HoldToPick';
+import HoldToPick from '@/components/HoldToPick';
 
 function fmtOdds(o: number) { return o > 0 ? `+${o}` : `${o}`; }
 
@@ -170,7 +170,7 @@ export default function BetPanel({ match }: { match: Match }) {
         <p className="text-center text-xs text-dim">🔒 Picks locked — game starting soon</p>
       )}
       <p className="text-center text-[11px] text-dim">
-        Hold {HOLD_MS / 1000}s to lock a pick · tap a locked pick to undo
+        Press and hold to lock a pick · tap a locked pick to undo
       </p>
     </div>
   );

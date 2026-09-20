@@ -12,12 +12,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { hapticImpact, hapticSuccess } from '@/lib/haptics';
 
-/** How long the user must hold to place a pick. */
-export const HOLD_MS = 3000;
+/**
+ * How long the user must hold to place a pick.
+ *
+ * 1s is about the ceiling for a press-and-hold confirm: iOS's own long-press
+ * fires at 500ms, and platform "hold to confirm" affordances land in the
+ * 800ms–1.2s band. Longer than that and every pick feels like a chore.
+ */
+export const HOLD_MS = 1000;
 
-const MOVE_TOLERANCE_PX = 14;
-// Escalating ticks so the hold has a rhythm rather than dead air.
-const TICKS = [0.34, 0.67];
+// Past this much finger travel we assume the user meant to scroll, not press,
+// and abandon the hold. Paired with `touch-action: pan-y` on the button this
+// is what lets a swipe that starts on a bet button still scroll the page.
+const MOVE_TOLERANCE_PX = 10;
+
+// A single mid-hold tick: enough to give the press a rhythm, not enough to
+// feel like a buzzer at this duration.
+const TICKS = [0.5];
 
 type Props = {
   onCommit: () => void;
@@ -138,7 +149,11 @@ export default function HoldToPick({
       onContextMenu={(e) => e.preventDefault()}
       onAnimationEnd={() => setJustCommitted(false)}
       aria-pressed={selected}
-      className={`relative overflow-hidden touch-none ${className} ${selected ? selectedClassName : ''}`}
+      // touch-pan-y, NOT touch-none: the browser keeps ownership of vertical
+      // scrolling, so a swipe that happens to start on a bet button still
+      // scrolls the board. The hold is abandoned on movement (see
+      // onPointerMove), so scrolling never places a pick by accident.
+      className={`relative overflow-hidden touch-pan-y ${className} ${selected ? selectedClassName : ''}`}
       style={justCommitted ? { animation: 'pickPop .28s ease-out' } : undefined}
     >
       {/* Fill sweep — sits behind the content, never intercepts pointers. */}
