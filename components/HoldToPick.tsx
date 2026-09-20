@@ -7,7 +7,7 @@
 // long-pressable (a card opens the full bet sheet). A deliberate hold makes
 // commitment explicit and makes stray taps harmless.
 //
-// Removing an existing pick is a plain tap — undoing shouldn't cost 3 seconds.
+// Removing an existing pick is a plain tap — undoing shouldn't cost a hold.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { hapticImpact, hapticSuccess } from '@/lib/haptics';
@@ -21,14 +21,23 @@ import { hapticImpact, hapticSuccess } from '@/lib/haptics';
  */
 export const HOLD_MS = 1000;
 
-// Past this much finger travel we assume the user meant to scroll, not press,
-// and abandon the hold. Paired with `touch-action: pan-y` on the button this
-// is what lets a swipe that starts on a bet button still scroll the page.
-const MOVE_TOLERANCE_PX = 10;
+/**
+ * Finger travel that abandons a hold.
+ *
+ * Generous on purpose. `touch-action: pan-y` means the browser owns vertical
+ * scrolling and fires `pointercancel` the instant it starts scrolling — that,
+ * not this threshold, is what distinguishes a scroll from a press. A tight
+ * threshold here only punished the natural drift of a finger resting for a
+ * full second, which read as "it didn't register".
+ */
+const MOVE_TOLERANCE_PX = 26;
 
-// A single mid-hold tick: enough to give the press a rhythm, not enough to
-// feel like a buzzer at this duration.
+// One mid-hold tick, so the press has a rhythm without feeling like a buzzer.
 const TICKS = [0.5];
+
+// How long the filled bar lingers after commit before handing the visual over
+// to the button's selected styling. Long enough to read as "it took".
+const CONFIRM_HOLD_MS = 300;
 
 type Props = {
   onCommit: () => void;
@@ -36,7 +45,7 @@ type Props = {
   selected: boolean;
   disabled?: boolean;
   className?: string;
-  /** Applied while the hold is in progress or the pick is selected. */
+  /** Applied while the pick is selected. */
   selectedClassName?: string;
   children: React.ReactNode;
 };
@@ -51,27 +60,43 @@ export default function HoldToPick({
   children,
 }: Props) {
   const [progress, setProgress] = useState(0);   // 0 → 1
-  const [justCommitted, setJustCommitted] = useState(false);
+  const [flash, setFlash] = useState(false);     // brief post-commit confirm
 
-  const rafId     = useRef<number | null>(null);
-  const startedAt = useRef(0);
-  const origin    = useRef<{ x: number; y: number } | null>(null);
-  const nextTick  = useRef(0);
-  const holding   = useRef(false);
+  const rafId       = useRef<number | null>(null);
+  const confirmTmr  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startedAt   = useRef(0);
+  const origin      = useRef<{ x: number; y: number } | null>(null);
+  const nextTick    = useRef(0);
+  const holding     = useRef(false);
+  /**
+   * True from the moment a hold commits until the finger lifts.
+   *
+   * Without this the gesture ate its own pick: the hold completes while the
+   * finger is still down, `selected` flips to true, and the pointer-up that
+   * follows is then read as the "tap to undo" gesture — placing and instantly
+   * deleting the pick. That's the intermittent "didn't register" behaviour.
+   */
+  const committed = useRef(false);
 
-  const stop = useCallback(() => {
+  const cancelHold = useCallback(() => {
     holding.current = false;
     origin.current  = null;
     if (rafId.current !== null) {
       cancelAnimationFrame(rafId.current);
       rafId.current = null;
     }
-    setProgress(0);
   }, []);
 
-  // Never leave a rAF running past unmount.
+  /** Abandon an in-flight hold and drain the fill. Never touches a commit. */
+  const abort = useCallback(() => {
+    if (committed.current) return;   // the fill is showing a confirmation
+    cancelHold();
+    setProgress(0);
+  }, [cancelHold]);
+
   useEffect(() => () => {
     if (rafId.current !== null) cancelAnimationFrame(rafId.current);
+    if (confirmTmr.current) clearTimeout(confirmTmr.current);
   }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
@@ -80,7 +105,12 @@ export default function HoldToPick({
     // firing while the user is deliberately holding a bet button.
     e.stopPropagation();
 
+    committed.current = false;
     if (selected) return;   // removal happens on pointer-up
+
+    // Keep receiving events even if the finger drifts off the button, so a
+    // small wander can't silently kill the hold.
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported */ }
 
     // Function *declaration* so the animation loop can schedule itself
     // without a self-referencing const.
@@ -96,12 +126,21 @@ export default function HoldToPick({
       }
 
       if (p >= 1) {
-        holding.current = false;
-        rafId.current   = null;
-        setProgress(0);
-        setJustCommitted(true);
+        holding.current   = false;
+        rafId.current     = null;
+        committed.current = true;
+
+        // Hold the bar full rather than snapping to empty — resetting here is
+        // what made the confirmation look delayed or absent.
+        setProgress(1);
+        setFlash(true);
         hapticSuccess();
         onCommit();
+
+        confirmTmr.current = setTimeout(() => {
+          setProgress(0);
+          setFlash(false);
+        }, CONFIRM_HOLD_MS);
         return;
       }
       rafId.current = requestAnimationFrame(step);
@@ -119,22 +158,29 @@ export default function HoldToPick({
     if (!origin.current) return;
     const dx = e.clientX - origin.current.x;
     const dy = e.clientY - origin.current.y;
-    // Treat it as a scroll, not a hold.
-    if (dx * dx + dy * dy > MOVE_TOLERANCE_PX ** 2) stop();
-  }, [stop]);
+    if (dx * dx + dy * dy > MOVE_TOLERANCE_PX ** 2) abort();
+  }, [abort]);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
     if (disabled) return;
     e.stopPropagation();
+
+    // This press just placed the pick — lifting must not undo it.
+    if (committed.current) {
+      committed.current = false;
+      cancelHold();
+      return;
+    }
+
     if (selected) {
       hapticImpact('light');
       onRemove();
       return;
     }
-    stop();
-  }, [disabled, selected, onRemove, stop]);
+    abort();
+  }, [disabled, selected, onRemove, abort, cancelHold]);
 
-  const active = progress > 0;
+  const filling = progress > 0;
 
   return (
     <button
@@ -144,30 +190,43 @@ export default function HoldToPick({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={stop}
-      onPointerLeave={stop}
+      // The browser fires this when it takes over to scroll — the real signal
+      // that the user meant to pan, not press.
+      onPointerCancel={abort}
       onContextMenu={(e) => e.preventDefault()}
-      onAnimationEnd={() => setJustCommitted(false)}
       aria-pressed={selected}
       // touch-pan-y, NOT touch-none: the browser keeps ownership of vertical
       // scrolling, so a swipe that happens to start on a bet button still
-      // scrolls the board. The hold is abandoned on movement (see
-      // onPointerMove), so scrolling never places a pick by accident.
+      // scrolls the board.
       className={`relative overflow-hidden touch-pan-y ${className} ${selected ? selectedClassName : ''}`}
-      style={justCommitted ? { animation: 'pickPop .28s ease-out' } : undefined}
+      style={flash ? { animation: 'pickPop .28s ease-out' } : undefined}
     >
       {/* Fill sweep — sits behind the content, never intercepts pointers. */}
-      {active && (
+      {filling && (
         <span
           aria-hidden
           className="absolute inset-y-0 left-0 pointer-events-none"
           style={{
             width: `${progress * 100}%`,
-            background: 'color-mix(in srgb, var(--c-pick) 26%, transparent)',
-            borderRight: '2px solid var(--c-pick)',
+            background: flash
+              ? 'color-mix(in srgb, var(--c-pick) 42%, transparent)'
+              : 'color-mix(in srgb, var(--c-pick) 26%, transparent)',
+            borderRight: flash ? 'none' : '2px solid var(--c-pick)',
           }}
         />
       )}
+
+      {/* Unambiguous "it took" marker. Absolutely positioned so it costs the
+          card no height. */}
+      {selected && (
+        <span
+          aria-hidden
+          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-pick flex items-center justify-center pointer-events-none"
+        >
+          <span className="text-[10px] font-black leading-none text-[#06080F]">✓</span>
+        </span>
+      )}
+
       <span className="relative flex flex-col items-center w-full">{children}</span>
     </button>
   );
