@@ -82,10 +82,28 @@ body {
   -webkit-touch-callout: none;
 }
 
-/* Users still need to select/copy real text (inputs always allow it). */
-input, textarea, [contenteditable], p, blockquote, pre, code {
+/* Users still need to type and copy in real fields. Note what is NOT here:
+   `p` and friends used to be in this list, which made every label on a game
+   card selectable — so a press on a team name would start an iOS text
+   selection instead of registering on the button underneath. */
+input, textarea, [contenteditable] {
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* Interactive surfaces must never begin a selection, whatever they contain. */
+button, button *, a, a *, [role='button'], [role='button'] * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none;
+}
+
+/* Long-form pages (privacy, terms) opt their prose back in, so it can still
+   be read and copied properly. */
+.selectable, .selectable * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 /* Inside the native app (html.native set by NativeShell) there must be no

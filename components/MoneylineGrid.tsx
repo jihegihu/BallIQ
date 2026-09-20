@@ -235,16 +235,9 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                   </Link>
                 </div>
 
-                {/* Win probability bar */}
-                <div className="px-2.5 pb-0.5 pt-1">
-                  <div className="relative h-1 bg-layer rounded-full overflow-hidden">
-                    <div className="absolute left-0 top-0 h-full bg-accent/50 rounded-full" style={{ width: `${homeProb}%` }} />
-                  </div>
-                  <div className="flex justify-between mt-0.5">
-                    <span className="text-[8px] text-dim tabular-nums">{homeProb}%</span>
-                    <span className="text-[8px] text-dim tabular-nums">{100 - homeProb}%</span>
-                  </div>
-                </div>
+                {/* No probability bar here — each team button already states
+                    its own "{odds} · {n}% favorite/underdog", so the bar was
+                    saying the same thing twice and costing card height. */}
 
                 {/* Team buttons */}
                 <div className="grid grid-cols-2">
