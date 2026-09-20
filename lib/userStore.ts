@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { BetType, ConfidenceLevel, User, UserPick } from '@/types';
-import { calculateXP, projectStreak } from './xp';
+import { calculateXP, projectStreak, etDay } from './xp';
 
 const DEFAULT_USER: User = {
   id:            '',
@@ -23,9 +23,11 @@ export function calculatePickXP(
   betType: BetType,
   confidenceLevel: ConfidenceLevel,
 ): number {
-  const today = new Date().toISOString().split('T')[0];
+  // Eastern day, matching the server (lib/xp.ts). placedAt is a UTC instant,
+  // so it has to be converted rather than string-prefix compared.
+  const today = etDay();
   return calculateXP({
-    isFirstToday:    !user.picks.some((p) => p.placedAt.startsWith(today)),
+    isFirstToday:    !user.picks.some((p) => etDay(p.placedAt) === today),
     projectedStreak: projectStreak(user.lastPickDate, user.currentStreak),
     betType,
     confidenceLevel,
@@ -37,16 +39,20 @@ export function calculatePickXP(
 interface UserStore {
   user: User;
   hydrated: boolean;
+  /** A write failed after all retries — the board may be behind the server. */
+  syncFailed: boolean;
   hydrate:    (picks: UserPick[], userPatch: Partial<User>) => void;
+  refresh:    () => Promise<void>;
   submitPick: (pick: UserPick) => void;
   cancelPick: (pickId: string) => void;
 }
 
-// Re-sync local state from the server after a write is rejected, so the
-// optimistic update doesn't leave the UI lying to the user.
-async function rehydrateFromServer() {
+// Re-sync local state from the server, so an optimistic update that the server
+// rejected — or a rating that settled server-side while the app sat open —
+// doesn't leave the UI lying to the user.
+export async function rehydrateFromServer() {
   try {
-    const res  = await fetch('/api/picks');
+    const res  = await fetch('/api/picks', { cache: 'no-store' });
     const data = await res.json();
     if (data.picks !== undefined) {
       useUserStore.getState().hydrate(data.picks ?? [], data.user ?? {});
@@ -56,16 +62,44 @@ async function rehydrateFromServer() {
   }
 }
 
+/**
+ * fetch + JSON with bounded exponential-backoff retries. A pick placed on a
+ * flaky connection used to be logged and dropped: the optimistic entry stayed
+ * on screen but the server never recorded it, so it vanished on next hydrate.
+ * Returns null only once every attempt has failed.
+ */
+async function fetchJsonWithRetry(
+  url: string,
+  init?: RequestInit,
+  attempts = 3,
+): Promise<Record<string, unknown> | null> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, init);
+      return await res.json();
+    } catch {
+      if (i === attempts - 1) break;
+      // 600ms, 1.2s — short enough that a pick still lands while the user looks at it
+      await new Promise((r) => setTimeout(r, 600 * 2 ** i));
+    }
+  }
+  return null;
+}
+
 export const useUserStore = create<UserStore>((set, get) => ({
   user: DEFAULT_USER,
   hydrated: false,
+  syncFailed: false,
 
   hydrate: (picks, userPatch) => {
     set((state) => ({
       hydrated: true,
+      syncFailed: false,
       user: { ...state.user, ...userPatch, picks },
     }));
   },
+
+  refresh: rehydrateFromServer,
 
   submitPick: (pick: UserPick) => {
     set((state) => {
@@ -87,14 +121,20 @@ export const useUserStore = create<UserStore>((set, get) => ({
       };
     });
 
-    fetch('/api/picks', {
+    fetchJsonWithRetry('/api/picks', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(pick),
-    })
-      .then((r) => r.json())
-      .then((data) => { if (!data.saved) rehydrateFromServer(); })
-      .catch((e) => console.warn('[picks] DB write failed:', e));
+    }).then((data) => {
+      if (data === null) {
+        // Never reached the server. Flag it and pull the truth back down so
+        // the user doesn't keep seeing a pick that was never recorded.
+        set({ syncFailed: true });
+        rehydrateFromServer();
+        return;
+      }
+      if (!data.saved) rehydrateFromServer();
+    });
   },
 
   cancelPick: (pickId: string) => {
@@ -110,9 +150,14 @@ export const useUserStore = create<UserStore>((set, get) => ({
       },
     }));
 
-    fetch(`/api/picks?pickId=${encodeURIComponent(pickId)}`, { method: 'DELETE' })
-      .then((r) => r.json())
-      .then((data) => { if (!data.deleted) rehydrateFromServer(); })
-      .catch((e) => console.warn('[cancelPick] DB delete failed:', e));
+    fetchJsonWithRetry(`/api/picks?pickId=${encodeURIComponent(pickId)}`, { method: 'DELETE' })
+      .then((data) => {
+        if (data === null) {
+          set({ syncFailed: true });
+          rehydrateFromServer();
+          return;
+        }
+        if (!data.deleted) rehydrateFromServer();
+      });
   },
 }));

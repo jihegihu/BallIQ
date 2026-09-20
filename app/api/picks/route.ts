@@ -7,7 +7,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { createAdminClient } from '@/lib/supabase';
 import { getOrCreateUser } from '@/lib/getOrCreateUser';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
-import { calculateXP, projectStreak } from '@/lib/xp';
+import { calculateXP, projectStreak, etDay } from '@/lib/xp';
 import { UserPick, BetType, PickSide, ConfidenceLevel, PickOutcome, Sport } from '@/types';
 
 // Picks lock 15 minutes before tip-off — same threshold the UI uses.
@@ -181,10 +181,13 @@ export async function POST(req: Request) {
     outcome: 'win',
   });
 
-  const today           = new Date().toISOString().split('T')[0];
+  // Eastern, not UTC — see lib/xp.ts. last_pick_date can come back as a full
+  // timestamp, so compare only the date portion.
+  const today           = etDay();
+  const lastPickDay     = (u.last_pick_date as string | null)?.slice(0, 10) ?? null;
   const projectedStreak = projectStreak(u.last_pick_date as string | null, u.current_streak as number);
   const xpEarned        = calculateXP({
-    isFirstToday: u.last_pick_date !== today,
+    isFirstToday: lastPickDay !== today,
     projectedStreak,
     betType: betType as BetType,
     confidenceLevel,

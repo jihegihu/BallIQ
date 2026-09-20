@@ -8,9 +8,9 @@
 
 import { useUserStore, calculatePickXP } from '@/lib/userStore';
 import { calculateEloDelta, getKFactor, eventEloToProb } from '@/lib/elo';
-import { hapticSuccess, hapticImpact } from '@/lib/haptics';
 import { Match, BetType, PickSide, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
+import HoldToPick, { HOLD_MS } from '@/components/HoldToPick';
 
 function fmtOdds(o: number) { return o > 0 ? `+${o}` : `${o}`; }
 
@@ -41,10 +41,11 @@ export default function BetPanel({ match }: { match: Match }) {
     );
   }
 
-  function handle(opt: Option) {
+  // Runs once a 3-second hold completes; removal is a plain tap handled by
+  // HoldToPick, so this only places (swapping out any other pick of the same
+  // bet type on this match).
+  function place(opt: Option) {
     if (locked) return;
-    const existing = getPickFor(opt.betType, opt.pickSide);
-    if (existing) { cancelPick(existing.id); hapticImpact('light'); return; }
 
     const sameType = user.picks.find(
       (p) => p.matchId === match.id && p.betType === opt.betType && p.outcome === 'pending',
@@ -73,8 +74,7 @@ export default function BetPanel({ match }: { match: Match }) {
       eloDelta:         null,
       xpEarned,
       placedAt:         new Date().toISOString(),
-    });
-    hapticSuccess(); // native-only tactile confirm; no-op on web
+    });   // HoldToPick already fired the success haptic
   }
 
   const awaySpread    = match.spreadLine === 0 ? 0 : -match.spreadLine;
@@ -124,23 +124,27 @@ export default function BetPanel({ match }: { match: Match }) {
               const prob     = Math.round(eventEloToProb(opt.eventElo) * 100);
 
               return (
-                <button
+                <HoldToPick
                   key={opt.pickSide}
-                  onClick={() => handle(opt)}
+                  selected={selected}
                   disabled={locked}
-                  className={`flex flex-col items-center rounded-2xl border py-3.5 px-2 transition-all active:scale-[0.97] ${
-                    selected
-                      ? 'bg-accent/15 border-accent/50'
-                      : locked
+                  onCommit={() => place(opt)}
+                  onRemove={() => {
+                    const existing = getPickFor(opt.betType, opt.pickSide);
+                    if (existing) cancelPick(existing.id);
+                  }}
+                  className={`flex flex-col items-center rounded-2xl border py-3.5 px-2 transition-colors ${
+                    locked
                       ? 'bg-card border-rim opacity-40 cursor-not-allowed'
                       : 'bg-card border-rim hover:border-sub'
                   }`}
+                  selectedClassName="!bg-pick/15 !border-pick/60"
                 >
                   {opt.showAvatar && <TeamAvatar teamName={opt.showAvatar} size="sm" />}
-                  <p className={`font-black text-sm leading-tight mt-1 text-center ${selected ? 'text-accent' : 'text-ink'}`}>
+                  <p className={`font-black text-sm leading-tight mt-1 text-center ${selected ? 'text-pick' : 'text-ink'}`}>
                     {opt.title}
                   </p>
-                  <p className={`text-xl font-black tabular-nums leading-tight mt-1 ${selected ? 'text-violet-300' : 'text-emerald-500'}`}>
+                  <p className={`text-xl font-black tabular-nums leading-tight mt-1 ${selected ? 'text-pick' : 'text-emerald-500'}`}>
                     ▲ +{proj.projectedGain}
                     <span className="ml-1 text-[10px] font-bold">Elo</span>
                   </p>
@@ -150,7 +154,12 @@ export default function BetPanel({ match }: { match: Match }) {
                   <p className="text-[10px] text-dim tabular-nums mt-1">
                     {fmtOdds(opt.odds)} · {prob}%
                   </p>
-                </button>
+                  {!locked && (
+                    <p className={`text-[9px] font-bold uppercase tracking-widest mt-1.5 ${selected ? 'text-pick' : 'text-dim'}`}>
+                      {selected ? 'Tap to undo' : 'Hold to pick'}
+                    </p>
+                  )}
+                </HoldToPick>
               );
             })}
           </div>
@@ -161,7 +170,7 @@ export default function BetPanel({ match }: { match: Match }) {
         <p className="text-center text-xs text-dim">🔒 Picks locked — game starting soon</p>
       )}
       <p className="text-center text-[11px] text-dim">
-        Tap to pick · tap again to remove
+        Hold {HOLD_MS / 1000}s to lock a pick · tap a locked pick to undo
       </p>
     </div>
   );

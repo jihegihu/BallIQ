@@ -8,6 +8,8 @@
 import { useEffect, useState } from 'react';
 import { useUserStore } from '@/lib/userStore';
 import { UserPick } from '@/types';
+import Confetti from '@/components/Confetti';
+import { hapticSuccess, hapticImpact } from '@/lib/haptics';
 
 const LAST_SEEN_KEY = 'balliq-last-recap';
 
@@ -67,6 +69,13 @@ export default function RecapBanner() {
     });
   }, [hydrated, picks, recap]);
 
+  // A settled slate deserves a tactile beat the moment it appears.
+  useEffect(() => {
+    if (!recap || dismissed) return;
+    if (recap.net >= 0) hapticSuccess();
+    else hapticImpact('medium');
+  }, [recap, dismissed]);
+
   if (!recap || dismissed) return null;
 
   const up  = recap.net >= 0;
@@ -79,6 +88,10 @@ export default function RecapBanner() {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-4">
+      {/* Celebration only when the slate actually went your way — a losing
+          night shouldn't get a party. */}
+      {up && recap.net > 0 && <Confetti />}
+
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -125,8 +138,8 @@ export default function RecapBanner() {
         )}
 
         <button
-          onClick={() => setDismissed(true)}
-          className="w-full mt-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95"
+          onClick={() => { hapticImpact('light'); setDismissed(true); }}
+          className="w-full mt-5 py-3 rounded-xl text-sm font-black text-white transition active:scale-95"
           style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
         >
           {up ? 'Keep climbing →' : 'Win it back →'}

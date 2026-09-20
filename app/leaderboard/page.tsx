@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useUserStore } from '@/lib/userStore';
+import EloSparkline from '@/components/EloSparkline';
 
 type Scope = 'global' | 'friends';
 type SportTab = 'global' | 'nba' | 'nfl' | 'mlb' | 'soccer' | 'tennis';
@@ -116,6 +117,11 @@ export default function LeaderboardPage() {
         <p className="text-[11px] text-dim mt-0.5">
           {scope === 'friends' ? 'You vs the players you follow' : 'Top 50 by Elo rating'}
         </p>
+      </div>
+
+      {/* Rating trend — renders nothing until there's history worth a line */}
+      <div className="mb-4">
+        <EloSparkline />
       </div>
 
       {/* Global / Friends scope toggle */}

@@ -63,8 +63,10 @@ export default function PicksPage() {
   const [tab, setTab]                   = useState<Tab>('pending');
   const [matchScores, setMatchScores]   = useState<Record<string, MatchScore>>({});
   const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(new Set());
+  const [statsOpen, setStatsOpen]       = useState(false);
 
   const user     = useUserStore((s) => s.user);
+  const hydrated = useUserStore((s) => s.hydrated);
   const kFactor  = getKFactor(user.totalPicks, user.weeksActive);
   const allPicks = [...user.picks].reverse();
 
@@ -154,96 +156,118 @@ export default function PicksPage() {
     over_under: 'Over/Under',
   };
 
+  // Picks live in the store, so there's no server suspense boundary to hang a
+  // loading.tsx off — show the skeleton until the first hydrate lands.
+  if (!hydrated) {
+    return (
+      <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
+        <div className="skeleton h-7 w-32 rounded mb-4" />
+        <div className="skeleton h-12 w-full rounded-xl mb-4" />
+        <div className="flex gap-2 mb-5">
+          <div className="skeleton h-9 flex-1 rounded-xl" />
+          <div className="skeleton h-9 flex-1 rounded-xl" />
+        </div>
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skeleton h-32 w-full rounded-xl" />
+          ))}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
       <h1 className="text-2xl font-black text-ink mb-4">My Picks</h1>
 
-      {/* ── Top stats ──────────────────────────────────────────────────────── */}
+      {/* ── Stats ──────────────────────────────────────────────────────────
+          Collapsed to a single summary strip by default. The picks themselves
+          are what people open this page for; the full breakdown is one tap
+          away rather than three screens of scrolling in front of them. */}
       {results.length > 0 && (
-        <>
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="bg-card border border-rim rounded-xl p-3">
-              <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Record</p>
-              <p className="text-lg font-black">
+        <div className="mb-4">
+          <button
+            onClick={() => setStatsOpen((v) => !v)}
+            className="w-full bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center justify-between active:scale-[0.99] transition"
+          >
+            <div className="flex items-center gap-3 text-sm font-black tabular-nums">
+              <span>
                 <span className="text-emerald-400">{wins}W</span>
-                <span className="text-dim mx-1">–</span>
+                <span className="text-dim mx-0.5">–</span>
                 <span className="text-red-400">{losses}L</span>
-              </p>
-              {winRate !== null && (
-                <p className="text-[10px] text-dim mt-0.5">{winRate}% overall</p>
+              </span>
+              {winRate !== null && <span className="text-sub text-xs font-bold">{winRate}%</span>}
+              <span className={netElo >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                {netElo >= 0 ? '+' : ''}{netElo} Elo
+              </span>
+            </div>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-dim uppercase tracking-widest">
+              Stats <span className="text-sm leading-none">{statsOpen ? '⌄' : '›'}</span>
+            </span>
+          </button>
+
+          {statsOpen && (
+            <div className="mt-2">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="bg-card border border-rim rounded-xl p-2.5">
+                  <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">🏆 Best Pick</p>
+                  <p className="text-base font-black text-emerald-400">
+                    {biggestWin > 0 ? `+${biggestWin} Elo` : '—'}
+                  </p>
+                </div>
+                <div className="bg-card border border-rim rounded-xl p-2.5">
+                  <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">Last 10</p>
+                  {last10Rate !== null
+                    ? <p className={`text-base font-black ${last10Rate >= 50 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {last10Rate}% <span className="text-[10px] text-dim font-bold">{last10Wins}/{last10.length}</span>
+                      </p>
+                    : <p className="text-base font-black text-dim">—</p>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-card border border-rim rounded-xl p-3 mb-2">
+                <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">By Pick Type</p>
+                <div className="space-y-2">
+                  {BET_TYPES.filter((bt) => byBetType[bt].total > 0).map((bt) => {
+                    const { total, wins: w, elo } = byBetType[bt];
+                    const rate = Math.round((w / total) * 100);
+                    return (
+                      <div key={bt} className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-sub w-24 shrink-0">{BET_LABEL[bt]}</p>
+                        <div className="flex-1 h-1.5 bg-layer rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-accent/60" style={{ width: `${rate}%` }} />
+                        </div>
+                        <p className="text-[10px] text-dim w-8 text-right">{rate}%</p>
+                        <p className={`text-[10px] font-bold w-12 text-right tabular-nums ${elo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {elo >= 0 ? '+' : ''}{elo}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {topSports.length > 0 && (
+                <div className="bg-card border border-rim rounded-xl p-3">
+                  <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">By Sport</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {topSports.map(([sport, { w, total, elo }]) => {
+                      const rate = Math.round((w / total) * 100);
+                      return (
+                        <div key={sport} className="bg-layer rounded-lg px-2.5 py-2">
+                          <p className="text-[10px] text-dim font-black uppercase tracking-widest">{sport}</p>
+                          <p className="text-sm font-black text-ink">{w}–{total - w}</p>
+                          <p className="text-[9px] text-dim">{rate}% · <span className={elo >= 0 ? 'text-emerald-400' : 'text-red-400'}>{elo >= 0 ? '+' : ''}{elo} Elo</span></p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
-
-            <div className="bg-card border border-rim rounded-xl p-3">
-              <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Net Elo</p>
-              <p className={`text-lg font-black ${netElo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {netElo >= 0 ? '+' : ''}{netElo}
-              </p>
-              <p className="text-[10px] text-dim mt-0.5">{results.length} settled picks</p>
-            </div>
-
-            <div className="bg-card border border-rim rounded-xl p-3">
-              <p className="text-[10px] text-dim uppercase tracking-wide mb-1">🏆 Best Pick</p>
-              <p className="text-lg font-black text-emerald-400">
-                {biggestWin > 0 ? `+${biggestWin} Elo` : '—'}
-              </p>
-            </div>
-
-            <div className="bg-card border border-rim rounded-xl p-3">
-              <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Last 10</p>
-              {last10Rate !== null
-                ? <p className={`text-lg font-black ${last10Rate >= 50 ? 'text-emerald-400' : 'text-red-400'}`}>{last10Rate}%</p>
-                : <p className="text-lg font-black text-dim">—</p>
-              }
-              <p className="text-[10px] text-dim mt-0.5">{last10Wins}/{last10.length} wins</p>
-            </div>
-          </div>
-
-          {/* ── By Bet Type ──────────────────────────────────────────────── */}
-          <div className="bg-card border border-rim rounded-xl p-3 mb-3">
-            <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">By Pick Type</p>
-            <div className="space-y-2">
-              {BET_TYPES.filter((bt) => byBetType[bt].total > 0).map((bt) => {
-                const { total, wins: w, elo } = byBetType[bt];
-                const rate = Math.round((w / total) * 100);
-                return (
-                  <div key={bt} className="flex items-center gap-2">
-                    <p className="text-xs font-bold text-sub w-24 shrink-0">{BET_LABEL[bt]}</p>
-                    <div className="flex-1 h-1.5 bg-layer rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-accent/60"
-                        style={{ width: `${rate}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-dim w-8 text-right">{rate}%</p>
-                    <p className={`text-[10px] font-bold w-12 text-right tabular-nums ${elo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {elo >= 0 ? '+' : ''}{elo}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── By Sport ─────────────────────────────────────────────────── */}
-          {topSports.length > 0 && (
-            <div className="bg-card border border-rim rounded-xl p-3 mb-5">
-              <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">By Sport</p>
-              <div className="grid grid-cols-2 gap-2">
-                {topSports.map(([sport, { w, total, elo }]) => {
-                  const rate = Math.round((w / total) * 100);
-                  return (
-                    <div key={sport} className="bg-layer rounded-lg px-2.5 py-2">
-                      <p className="text-[10px] text-dim font-black uppercase tracking-widest">{sport}</p>
-                      <p className="text-sm font-black text-ink">{w}–{total - w}</p>
-                      <p className="text-[9px] text-dim">{rate}% · <span className={elo >= 0 ? 'text-emerald-400' : 'text-red-400'}>{elo >= 0 ? '+' : ''}{elo} Elo</span></p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ── Tournament recaps (shown whenever the user has tournament picks) ──── */}
@@ -483,6 +507,17 @@ function ResultCard({ pick }: { pick: UserPick }) {
         )}
         <span className="ml-auto font-semibold text-violet-400">+{pick.xpEarned} XP</span>
       </div>
+
+      {/* A push returns ±0 Elo. Without saying so, a zero delta just reads as
+          a bug. */}
+      {outcome === 'push' && (
+        <p className="text-[10px] text-dim mt-1.5 leading-snug">
+          {pick.betType === 'over_under'
+            ? 'The total landed exactly on the line'
+            : 'The result landed exactly on the spread'}
+          {' '}— your rating is unchanged.
+        </p>
+      )}
     </div>
   );
 }

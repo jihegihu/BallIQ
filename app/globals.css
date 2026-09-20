@@ -17,6 +17,7 @@
   --color-sub:    var(--c-sub);
   --color-dim:    var(--c-dim);
   --color-accent: var(--c-accent);
+  --color-pick:   var(--c-pick);
 }
 
 /* ── Raw design tokens ────────────────────────────────────────────────────── */
@@ -30,7 +31,15 @@
   --c-ink:    #FFFFFF;
   --c-sub:    #94A3B8;
   --c-dim:    #64748B;
-  --c-accent: #A78BFA; /* violet-400 */
+  --c-accent: #A78BFA; /* violet-400 — brand */
+  /*
+   * Selection / locked-in colour. Deliberately NOT the violet brand accent:
+   * a pick needs its own signal, and it must stay legible next to the
+   * win-green and loss-red used on results. Electric cyan reads as "armed"
+   * and sits opposite both on the wheel.
+   */
+  --c-pick:     #22D3EE; /* cyan-400 */
+  --c-pick-ink: #ECFEFF; /* cyan-50 — text on a filled pick */
 }
 
 html.light {
@@ -43,6 +52,8 @@ html.light {
   --c-sub:    #1E293B;
   --c-dim:    #475569;
   --c-accent: #7C3AED; /* violet-600 */
+  --c-pick:     #0891B2; /* cyan-600 — darker so it holds on white */
+  --c-pick-ink: #ECFEFF;
 }
 
 body {
@@ -99,4 +110,44 @@ html.native, html.native body {
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* Pick committed — a quick confirm pulse on the button. */
+@keyframes pickPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* ── Confetti (recap celebration) ─────────────────────────────────────────── */
+
+@keyframes confettiFall {
+  0%   { transform: translate3d(0, -12vh, 0) rotate(0deg);    opacity: 1; }
+  100% { transform: translate3d(var(--drift, 0), 92vh, 0) rotate(var(--spin, 540deg)); opacity: 0; }
+}
+
+/* ── Skeleton shimmer ─────────────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--c-layer);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+/* Users who ask for less motion get none of the above. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+  [data-confetti] { display: none !important; }
 }

@@ -23,8 +23,8 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <PushRegistrar />
       <OnboardingModal />
       <EloHeader />
-      {/* reserves space for the fixed top bar (h-11 + notch safe area) */}
-      <div className="flex-1" style={{ paddingTop: 'calc(2.75rem + env(safe-area-inset-top))' }}>{children}</div>
+      {/* reserves space for the fixed top bar (h-12 + notch safe area) */}
+      <div className="flex-1" style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top))' }}>{children}</div>
       <BottomNav />
     </>
   );

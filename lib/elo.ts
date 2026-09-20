@@ -55,15 +55,38 @@ export function impliedProbToEventElo(prob: number): number {
 // Veterans: slow movement (stable, earned)
 // Gated by BOTH pick count AND weeks active to prevent farming
 
+export const ELO_FLOOR = 100;  // ratings never fall below this
+
+export const K_NEW = 64;   // brand-new account: rating moves fast
+export const K_VET = 20;   // seasoned account: rating is hard-earned
+
 export function getKFactor(totalPicks: number, weeksActive: number): number {
-  if (totalPicks < 30  || weeksActive < 2)  return 64;
-  if (totalPicks < 100 || weeksActive < 6)  return 40;
-  if (totalPicks < 300 || weeksActive < 16) return 28;
-  return 20;
+  // Progress along each axis (0 → 1). Taking the MIN means neither grinding
+  // picks nor merely waiting can rush the ramp on its own — the old gate,
+  // preserved.
+  const pickProgress = Math.min(1, Math.max(0, totalPicks) / 300);
+  const weekProgress = Math.min(1, Math.max(0, weeksActive - 1) / 15);
+  const t = Math.min(pickProgress, weekProgress);
+
+  // Ease-out so K drops fastest early (when our estimate of the user is
+  // worst) and flattens toward the veteran floor. This replaces hard tier
+  // cliffs — the old table dropped 64→40 in a single pick, a 37% overnight
+  // cut in how much the game reacted to you. The curve still passes through
+  // the old anchors (~40 at 100 picks/6 weeks, 20 at 300/16).
+  const eased = 1 - Math.pow(1 - t, 2);
+  return Math.round(K_NEW - (K_NEW - K_VET) * eased);
 }
 
-// ─── STEP 5: Spread bonus multiplier ─────────────────────────────────────────
-// Spread picks are harder → reward them with a bonus
+// ─── STEP 5: Spread stake multiplier ─────────────────────────────────────────
+// Spread picks are harder, so they play for higher stakes — the multiplier
+// scales the gain AND the loss equally.
+//
+// It is deliberately symmetric. Paying spreads more on a win than they cost on
+// a loss would hand every user free expected Elo: at a coin-flip 50% hit rate,
+// a 1.35×gain / 1.10×loss split nets ~+0.06·K per pick for picking at random,
+// which is farmable. Symmetric = more volatility, identical EV, no exploit.
+// The genuine *reward* for taking the harder bet lives in XP (see lib/xp.ts),
+// which is not zero-sum.
 
 export function getSpreadMultiplier(betType: BetType): number {
   return betType === 'spread' ? 1.35 : 1.0;
@@ -119,15 +142,23 @@ export function calculateEloDelta({
     ? 0
     : Math.round(baseEloDelta * confMult * spreadMult);
 
-  // Floor guard: Elo can never go below 0
-  const newElo = Math.max(0, userElo + finalEloDelta);
+  // Rating floor. Chess convention — a floor well beneath any competitive
+  // rating, so hitting it means something has gone very wrong rather than
+  // being a place to farm from. (Elo is self-correcting anyway: climbing back
+  // raises expectedScore, which shrinks gains automatically.) 0 was a worse
+  // floor because it let a user sit at literal zero with nothing to lose.
+  const newElo = Math.max(ELO_FLOOR, userElo + finalEloDelta);
 
-  // Pre-pick projections (shown to user before they confirm)
+  // Pre-pick projections (shown to user before they confirm).
+  // These mirror finalEloDelta exactly: a win pays +projectedGain, a loss
+  // costs −projectedLoss. The loss is capped by the distance to the floor so
+  // the UI can never advertise a risk larger than the user can actually take.
   const projectedGain = Math.round(
     kFactor * (1 - expectedScore) * confMult * spreadMult
   );
-  const projectedLoss = Math.round(
-    kFactor * expectedScore * confMult * spreadMult
+  const projectedLoss = Math.min(
+    Math.round(kFactor * expectedScore * confMult * spreadMult),
+    Math.max(0, userElo - ELO_FLOOR),
   );
 
   return {

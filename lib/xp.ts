@@ -24,13 +24,36 @@ export function calculateXP({
   return xp;
 }
 
+// ── Day boundaries ────────────────────────────────────────────────────────────
+// Streaks and the once-a-day XP bonus are anchored to US Eastern, NOT UTC.
+// With UTC, a user picking at 9pm ET on consecutive evenings lands on the same
+// UTC date (02:00 next day) — the streak silently stalls, and "first pick
+// today" mis-fires. Eastern matches the sports calendar and the sync cron, and
+// both client and server call this so they always agree.
+const ET_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+});
+
+/** Calendar day (YYYY-MM-DD) in US Eastern for an ISO string, Date, or now. */
+export function etDay(when: string | Date = new Date()): string {
+  const d = typeof when === 'string' ? new Date(when) : when;
+  if (Number.isNaN(d.getTime())) return ET_DAY.format(new Date());
+  return ET_DAY.format(d);
+}
+
+/** Yesterday's Eastern calendar day. */
+export function etYesterday(): string {
+  return etDay(new Date(Date.now() - 86_400_000));
+}
+
 // Streak the user would have after placing a pick right now.
 export function projectStreak(lastPickDate: string | null, currentStreak: number): number {
-  const today     = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86_400_000).toISOString().split('T')[0];
+  // last_pick_date may arrive as a full timestamp from the DB — normalise.
+  const last = lastPickDate ? lastPickDate.slice(0, 10) : null;
   return (
-    lastPickDate === today     ? currentStreak :
-    lastPickDate === yesterday ? currentStreak + 1 :
+    last === etDay()       ? currentStreak :
+    last === etYesterday() ? currentStreak + 1 :
     1
   );
 }

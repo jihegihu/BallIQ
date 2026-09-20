@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
 import { calculatePickXP } from '@/lib/userStore';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
-import { hapticSuccess, hapticImpact } from '@/lib/haptics';
+import { hapticImpact } from '@/lib/haptics';
 import { useLongPress } from '@/lib/useLongPress';
+import HoldToPick from '@/components/HoldToPick';
 import { Match, Sport, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
 import RecapBanner from '@/components/RecapBanner';
@@ -15,11 +16,23 @@ import BetSheet from '@/components/BetSheet';
 import { eventEloToProb } from '@/lib/elo';
 
 // Hook-per-card wrapper (hooks can't be called inside .map). Long-pressing
-// anywhere on a game card opens the full BetSheet with a haptic thump.
+// the card chrome opens the full BetSheet with a haptic thump.
+//
+// The bet buttons inside run their own 3-second hold-to-confirm, so presses
+// that start on one must NOT also arm the card's sheet gesture — HoldToPick
+// stops propagation, and this guard is the belt to that braces.
 function LongPressCard({ onLongPress, children }: { onLongPress: () => void; children: React.ReactNode }) {
   const handlers = useLongPress(() => { hapticImpact('medium'); onLongPress(); });
+
   return (
-    <div {...handlers} className="bg-card border border-rim rounded-xl overflow-hidden select-none">
+    <div
+      {...handlers}
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest('[data-bet-button]')) return;
+        handlers.onPointerDown(e);
+      }}
+      className="bg-card border border-rim rounded-2xl overflow-hidden select-none"
+    >
       {children}
     </div>
   );
@@ -45,14 +58,6 @@ function isLocked(commenceTime: string) {
 
 function fmtOdds(o: number) {
   return o > 0 ? `+${o}` : `${o}`;
-}
-
-function eloTier(elo: number): string {
-  if (elo >= 2000) return 'Elite';
-  if (elo >= 1600) return 'Expert';
-  if (elo >= 1200) return 'Advanced';
-  if (elo >= 800)  return 'Intermediate';
-  return 'Rookie';
 }
 
 function fmtTime(iso: string) {
@@ -92,14 +97,13 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
     );
   }
 
-  function handleTeamClick(match: Match, side: 'home' | 'away') {
+  // Called once a 3-second hold completes. Removal is handled separately by
+  // HoldToPick (a plain tap), so this only ever places — swapping sides when a
+  // pick already exists on the other team.
+  function placeMoneyline(match: Match, side: 'home' | 'away') {
     if (isLocked(match.commenceTime)) return;
     const existing = getPendingMoneyline(match.id);
-
-    if (existing) {
-      cancelPick(existing.id);
-      if (existing.pickSide === side) return;
-    }
+    if (existing) cancelPick(existing.id);
 
     const eventElo = side === 'home' ? match.eventElos.moneylineHome : match.eventElos.moneylineAway;
     const proj     = calculateEloDelta({ userElo: user.globalElo, eventElo, kFactor, confidenceLevel: 'medium', betType: 'moneyline', outcome: 'win' });
@@ -125,8 +129,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
       xpEarned,
       placedAt:         new Date().toISOString(),
     };
-    submitPick(pick);
-    hapticSuccess(); // native-only tactile confirm; no-op on web
+    submitPick(pick);   // HoldToPick already fired the success haptic
   }
 
   const todayLine = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
@@ -144,42 +147,31 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
       user.picks.some((p) => p.outcome === 'pending') ? 'pb-44' : 'pb-28'
     }`}>
 
-      {/* Header: title + rating */}
-      <div className="mb-4">
-        <div>
-          <h1 className="text-2xl font-black text-ink leading-none">
-            Ball<span className="text-accent">IQ</span>
-          </h1>
-          <p className="text-sm font-black mt-1.5 tabular-nums">
-            <span className="text-accent">◆ {user.globalElo.toLocaleString()} Elo</span>
-            {weeklyDelta !== 0 && (
-              <span className={`ml-1.5 text-xs ${weeklyDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {weeklyDelta > 0 ? '▲' : '▼'}{Math.abs(weeklyDelta)} this week
-              </span>
-            )}
-            <span className="ml-1.5 text-xs font-bold text-sub">{eloTier(user.globalElo)}</span>
-            {user.currentStreak > 0 && (
-              <span className="ml-1.5 text-xs font-bold text-orange-400">{user.currentStreak}🔥</span>
-            )}
+      {/* The BallIQ wordmark and the rating both live in the fixed top bar now,
+          so the board opens straight onto the games. */}
+      <div className="flex items-baseline justify-between mb-3">
+        <p className="text-[11px] text-dim">
+          {todayLine} · {upcoming.length} game{upcoming.length !== 1 ? 's' : ''}
+        </p>
+        {weeklyDelta !== 0 && (
+          <p className={`text-[11px] font-black tabular-nums ${weeklyDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {weeklyDelta > 0 ? '▲ +' : '▼ '}{Math.abs(weeklyDelta)} this week
           </p>
-          <p className="text-[11px] text-dim mt-0.5">
-            {todayLine} · {upcoming.length} game{upcoming.length !== 1 ? 's' : ''} on the board
-          </p>
-        </div>
+        )}
       </div>
 
       <RecapBanner />
 
-      {/* Sport filter */}
-      <div className="flex gap-2 mb-5 overflow-x-auto pb-0.5 -mx-4 px-4">
+      {/* Sport filter — larger type now that the header block is gone */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-0.5 -mx-4 px-4">
         {FILTERS.map((s) => (
           <button
             key={s}
-            onClick={() => setSport(s)}
-            className={`shrink-0 py-2 px-4 rounded-xl text-xs font-black transition ${
+            onClick={() => { hapticImpact('light'); setSport(s); }}
+            className={`shrink-0 py-2.5 px-5 rounded-xl text-sm font-black tracking-wide transition active:scale-95 ${
               sport === s
-                ? 'bg-violet-600 text-white'
-                : 'bg-card text-dim border border-rim hover:border-sub'
+                ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                : 'bg-card text-sub border border-rim hover:border-sub'
             }`}
           >
             {s}
@@ -194,12 +186,25 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
           <p className="font-bold text-ink mb-1">
             No {sport === 'ALL' ? '' : sport === 'SOCCER' ? 'soccer ' : sportName(sport as Sport) + ' '}games right now
           </p>
-          <p className="text-sm text-dim">Try syncing or check another sport.</p>
+          {/* Point at a sport that actually has games rather than at the
+              manual sync button, which no longer exists. */}
+          {sport !== 'ALL' && upcoming.length > 0 ? (
+            <button
+              onClick={() => { hapticImpact('light'); setSport('ALL'); }}
+              className="mt-1 text-sm font-bold text-accent active:scale-95 transition"
+            >
+              See all {upcoming.length} game{upcoming.length !== 1 ? 's' : ''} →
+            </button>
+          ) : (
+            <p className="text-sm text-dim">
+              The board fills as games are scheduled — check back soon.
+            </p>
+          )}
         </div>
       ) : (
         <>
-        <p className="text-[10px] text-dim mb-2 px-0.5">
-          Tap a team to pick the winner · hold a card for spread &amp; totals
+        <p className="text-[11px] text-dim mb-2.5 px-0.5">
+          Hold a team to lock your pick · hold the card header for spread &amp; totals
         </p>
         <div className="flex flex-col gap-1.5">
           {visible.map((match) => {
@@ -214,29 +219,30 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
 
             return (
               <LongPressCard key={match.id} onLongPress={() => setSheetMatch(match)}>
-                {/* Header */}
-                <div className="flex items-center justify-between px-2.5 py-1 bg-layer border-b border-rim">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[8px] font-black text-accent/80 uppercase tracking-widest">{sportName(match.sport)}</span>
-                    <span className="text-dim text-[8px]">·</span>
-                    <span className="text-[9px] text-sub">{fmtTime(match.commenceTime)}</span>
+                {/* Header — ~1.7x its old height, and the sport/time now read
+                    at a glance instead of needing a squint */}
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-layer border-b border-rim">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-black text-accent uppercase tracking-widest">{sportName(match.sport)}</span>
+                    <span className="text-dim text-[10px]">·</span>
+                    <span className="text-[12px] font-semibold text-sub">{fmtTime(match.commenceTime)}</span>
                   </div>
                   <Link
                     href={`/matches/${match.id}`}
-                    className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[9px] font-semibold"
+                    className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[11px] font-bold"
                   >
-                    More bets <span className="text-xs leading-none">›</span>
+                    More bets <span className="text-sm leading-none">›</span>
                   </Link>
                 </div>
 
                 {/* Win probability bar */}
-                <div className="px-2.5 pb-0.5 pt-1">
-                  <div className="relative h-1 bg-layer rounded-full overflow-hidden">
+                <div className="px-3.5 pb-1 pt-2.5">
+                  <div className="relative h-1.5 bg-layer rounded-full overflow-hidden">
                     <div className="absolute left-0 top-0 h-full bg-accent/50 rounded-full" style={{ width: `${homeProb}%` }} />
                   </div>
-                  <div className="flex justify-between mt-0.5">
-                    <span className="text-[8px] text-dim">{homeProb}%</span>
-                    <span className="text-[8px] text-dim">{100 - homeProb}%</span>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[10px] text-dim tabular-nums">{homeProb}%</span>
+                    <span className="text-[10px] text-dim tabular-nums">{100 - homeProb}%</span>
                   </div>
                 </div>
 
@@ -250,36 +256,37 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     const selected = pick?.pickSide === side;
 
                     return (
-                      <button
+                      <HoldToPick
                         key={side}
-                        onClick={() => handleTeamClick(match, side)}
+                        selected={selected}
                         disabled={locked}
-                        className={`flex flex-col items-center py-2 px-1.5 transition-all active:scale-95 ${
+                        onCommit={() => placeMoneyline(match, side)}
+                        onRemove={() => { const p = getPendingMoneyline(match.id); if (p) cancelPick(p.id); }}
+                        className={`flex flex-col items-center py-4 px-1.5 transition-colors ${
                           side === 'away' ? 'border-l border-rim' : ''
-                        } ${
-                          selected
-                            ? 'bg-accent/15 border-accent/30'
-                            : locked
-                            ? 'opacity-40 cursor-not-allowed'
-                            : 'hover:bg-layer'
-                        }`}
+                        } ${locked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-layer'}`}
+                        selectedClassName="bg-pick/15 ring-1 ring-inset ring-pick/50"
                       >
                         <TeamAvatar teamName={team} size="xs" />
-                        <p className={`font-black text-xs leading-tight mt-0.5 ${selected ? 'text-accent' : 'text-ink'}`}>
+                        <p className={`font-black text-sm leading-tight mt-1.5 ${selected ? 'text-pick' : 'text-ink'}`}>
                           {team}
                         </p>
-                        <p className={`text-base font-black tabular-nums leading-tight ${selected ? 'text-violet-300' : 'text-emerald-500'}`}>
+                        <p className={`text-lg font-black tabular-nums leading-tight mt-0.5 ${selected ? 'text-pick' : 'text-emerald-500'}`}>
                           ▲ +{proj.projectedGain}
-                          <span className="ml-0.5 text-[9px] font-bold">Elo</span>
+                          <span className="ml-0.5 text-[10px] font-bold">Elo</span>
                         </p>
-                        <p className="text-[8px] text-dim tabular-nums mb-0.5">
+                        <p className="text-[10px] text-dim tabular-nums mb-0.5">
                           risk <span className="text-red-500 font-bold">−{proj.projectedLoss}</span>
                         </p>
-                        <p className="text-[8px] text-dim tabular-nums">
+                        <p className="text-[10px] text-dim tabular-nums">
                           {fmtOdds(odds)} · {prob}% {prob >= 50 ? 'favorite' : 'underdog'}
                         </p>
-                        {locked && <span className="mt-0.5 text-[8px] text-dim">Locked</span>}
-                      </button>
+                        {locked
+                          ? <span className="mt-1 text-[10px] text-dim">Locked</span>
+                          : <span className={`mt-1 text-[9px] font-bold uppercase tracking-widest ${selected ? 'text-pick' : 'text-dim'}`}>
+                              {selected ? 'Tap to undo' : 'Hold to pick'}
+                            </span>}
+                      </HoldToPick>
                     );
                   })}
                 </div>
