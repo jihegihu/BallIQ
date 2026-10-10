@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { UserPick } from '@/types';
 import { calculateEloDelta, getKFactor, eventEloToProb } from '@/lib/elo';
 import TournamentRecaps from '@/components/TournamentRecaps';
+import { summarizeRecord } from '@/lib/record';
+import { PICK_LABEL } from '@/lib/pickLabels';
 
 type Tab = 'pending' | 'results';
 
@@ -112,9 +114,7 @@ export default function PicksPage() {
 
   // ── Compute analytics ────────────────────────────────────────────────────
 
-  const wins       = results.filter((p) => p.outcome === 'win').length;
-  const losses     = results.filter((p) => p.outcome === 'loss').length;
-  const winRate    = results.length > 0 ? Math.round((wins / results.length) * 100) : null;
+  const { wins, losses, winRate } = summarizeRecord(results.map((p) => p.outcome));
   const netElo     = results.reduce((sum, p) => sum + (p.eloDelta ?? 0), 0);
   const biggestWin = results.reduce((max, p) => Math.max(max, p.eloDelta ?? 0), 0);
 
@@ -150,11 +150,7 @@ export default function PicksPage() {
   const last10Wins  = last10.filter((p) => p.outcome === 'win').length;
   const last10Rate  = last10.length > 0 ? Math.round((last10Wins / last10.length) * 100) : null;
 
-  const BET_LABEL: Record<string, string> = {
-    moneyline:  'Moneyline',
-    spread:     'Spread',
-    over_under: 'Over/Under',
-  };
+  const BET_LABEL = PICK_LABEL;
 
   // Picks live in the store, so there's no server suspense boundary to hang a
   // loading.tsx off — show the skeleton until the first hydrate lands.

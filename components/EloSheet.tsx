@@ -10,7 +10,8 @@ import { useUserStore } from '@/lib/userStore';
 import { Sport, UserPick } from '@/types';
 import { getCurrentSeason, getDaysRemaining } from '@/lib/seasons';
 import { useDragDismiss } from '@/lib/useDragDismiss';
-import { tierStyle } from '@/lib/tiers';
+import { tierStyle, nextTierProgress } from '@/lib/tiers';
+import { summarizeRecord, isSettled } from '@/lib/record';
 import { useThemeStore } from '@/lib/themeStore';
 
 // Soccer leagues share a single rating column server-side, so EPL stands in
@@ -26,22 +27,6 @@ const SPORT_DISPLAY: { key: Sport; label: string; members: Sport[] }[] = [
 
 
 
-function nextTierProgress(elo: number) {
-  const TIERS = [
-    { at: 800,  label: 'Intermediate' },
-    { at: 1200, label: 'Advanced' },
-    { at: 1600, label: 'Expert' },
-    { at: 2000, label: 'Elite' },
-  ];
-  const next = TIERS.find((t) => elo < t.at);
-  if (!next) return null;
-  const floor = TIERS[TIERS.indexOf(next) - 1]?.at ?? 0;
-  return {
-    label:   next.label,
-    toGo:    next.at - elo,
-    percent: Math.min(100, Math.max(0, Math.round(((elo - floor) / (next.at - floor)) * 100))),
-  };
-}
 
 export default function EloSheet({ onClose }: { onClose: () => void }) {
   const user = useUserStore((s) => s.user);
@@ -54,11 +39,8 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  const resolved   = user.picks.filter((p) => p.outcome !== 'pending' && p.outcome !== 'cancelled');
-  const wins       = resolved.filter((p) => p.outcome === 'win').length;
-  const losses     = resolved.filter((p) => p.outcome === 'loss').length;
-  const pushes     = resolved.filter((p) => p.outcome === 'push').length;
-  const winRate    = resolved.length > 0 ? Math.round((wins / resolved.length) * 100) : null;
+  const resolved   = user.picks.filter((p) => isSettled(p.outcome));
+  const { wins, losses, pushes, winRate } = summarizeRecord(resolved.map((p) => p.outcome));
   const netElo     = user.globalElo - 1200;
   const biggestWin = resolved.reduce((max, p) => Math.max(max, p.eloDelta ?? 0), 0);
 

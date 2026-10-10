@@ -13,7 +13,6 @@ import TeamAvatar from '@/components/TeamAvatar';
 import RecapBanner from '@/components/RecapBanner';
 import PendingPicksBar from '@/components/PendingPicksBar';
 import BetSheet from '@/components/BetSheet';
-import { eventEloToProb } from '@/lib/elo';
 
 // Hook-per-card wrapper (hooks can't be called inside .map). Long-pressing
 // the card chrome opens the full BetSheet with a haptic thump.
@@ -54,10 +53,6 @@ function sportName(sport: Sport): string { return SPORT_LABEL[sport] ?? sport; }
 
 function isLocked(commenceTime: string) {
   return new Date(commenceTime).getTime() - Date.now() < 15 * 60 * 1000;
-}
-
-function fmtOdds(o: number) {
-  return o > 0 ? `+${o}` : `${o}`;
 }
 
 function fmtTime(iso: string) {
@@ -204,7 +199,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
       ) : (
         <>
         <p className="text-[11px] text-dim mb-2 px-0.5">
-          Press and hold a team to lock it in · hold the card header for spread &amp; totals
+          Press and hold a team to lock it in · hold the card header for margin &amp; totals
         </p>
         <div className="flex flex-col gap-1.5">
           {visible.map((match) => {
@@ -215,7 +210,6 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
             const awayElo  = match.eventElos.moneylineAway;
             const homeProj = calculateEloDelta({ userElo: user.globalElo, eventElo: homeElo, kFactor, confidenceLevel: 'medium', betType: 'moneyline', outcome: 'win' });
             const awayProj = calculateEloDelta({ userElo: user.globalElo, eventElo: awayElo, kFactor, confidenceLevel: 'medium', betType: 'moneyline', outcome: 'win' });
-            const homeProb = Math.round(eventEloToProb(homeElo) * 100);
 
             return (
               <LongPressCard key={match.id} onLongPress={() => setSheetMatch(match)}>
@@ -231,7 +225,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     href={`/matches/${match.id}`}
                     className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[11px] font-bold"
                   >
-                    More bets <span className="text-sm leading-none">›</span>
+                    Full game <span className="text-sm leading-none">›</span>
                   </Link>
                 </div>
 
@@ -243,9 +237,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                 <div className="grid grid-cols-2">
                   {(['home', 'away'] as const).map((side) => {
                     const team     = side === 'home' ? match.homeTeam : match.awayTeam;
-                    const odds     = side === 'home' ? match.moneylineHome : match.moneylineAway;
                     const proj     = side === 'home' ? homeProj : awayProj;
-                    const prob     = side === 'home' ? homeProb : 100 - homeProb;
                     const selected = pick?.pickSide === side;
 
                     return (
@@ -267,12 +259,6 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                         <p className={`text-base font-black tabular-nums leading-tight ${selected ? 'text-pick' : 'text-emerald-500'}`}>
                           ▲ +{proj.projectedGain}
                           <span className="ml-0.5 text-[9px] font-bold">Elo</span>
-                        </p>
-                        <p className="text-[8px] text-dim tabular-nums mb-0.5">
-                          risk <span className="text-red-500 font-bold">−{proj.projectedLoss}</span>
-                        </p>
-                        <p className="text-[8px] text-dim tabular-nums">
-                          {fmtOdds(odds)} · {prob}% {prob >= 50 ? 'favorite' : 'underdog'}
                         </p>
                         {/* No per-button hint here — the list header already
                             explains the gesture, and an extra line is exactly

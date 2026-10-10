@@ -15,7 +15,9 @@ export default function TierLadder() {
     <div className="w-full mt-3 space-y-1.5">
       {TIERS.map((t, i) => {
         const color = tierStyle(t.min, theme).color;
-        const pct   = 100 - i * 20;
+        // Scales with however many tiers exist, so the lowest band still
+        // shows a sliver instead of a 0%-wide bar.
+        const pct   = Math.round(100 - (i * 85) / (TIERS.length - 1));
         return (
           <div key={t.label} className="flex items-center gap-2">
             <div className="w-20 shrink-0 text-right text-[10px] font-black" style={{ color }}>

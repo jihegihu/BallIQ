@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase';
 import Link from 'next/link';
 import TierLabel from '@/components/TierLabel';
 import { tierFor } from '@/lib/tiers';
+import { summarizeRecord } from '@/lib/record';
 
 
 
@@ -41,9 +42,7 @@ export default async function PublicProfilePage({
     .limit(10);
 
   const picks   = recentPicks ?? [];
-  const wins    = picks.filter((p: Row) => p.outcome === 'win').length;
-  const losses  = picks.filter((p: Row) => p.outcome === 'loss').length;
-  const winRate = picks.length > 0 ? Math.round((wins / picks.length) * 100) : null;
+  const { wins, losses, winRate } = summarizeRecord(picks.map((p: Row) => p.outcome as string));
   const netElo  = picks.reduce((s: number, p: Row) => s + ((p.elo_delta as number) ?? 0), 0);
 
   const globalTier = tierFor(u.global_elo as number);

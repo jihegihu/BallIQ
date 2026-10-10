@@ -7,6 +7,7 @@
 // tapping your pick again removes it).
 
 import { useUserStore, calculatePickXP } from '@/lib/userStore';
+import { PICK_LABEL, PICK_HINT } from '@/lib/pickLabels';
 import { calculateEloDelta, getKFactor, eventEloToProb } from '@/lib/elo';
 import { Match, BetType, PickSide, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
@@ -83,23 +84,23 @@ export default function BetPanel({ match }: { match: Match }) {
 
   const sections: { label: string; hint: string; options: [Option, Option] }[] = [
     {
-      label: 'Moneyline',
-      hint:  'who wins the game',
+      label: PICK_LABEL.moneyline,
+      hint:  PICK_HINT.moneyline,
       options: [
         { betType: 'moneyline', pickSide: 'home', odds: match.moneylineHome, eventElo: match.eventElos.moneylineHome, title: match.homeTeam, showAvatar: match.homeTeam },
         { betType: 'moneyline', pickSide: 'away', odds: match.moneylineAway, eventElo: match.eventElos.moneylineAway, title: match.awayTeam, showAvatar: match.awayTeam },
       ],
     },
     {
-      label: 'Spread',
-      hint:  'win margin vs the line',
+      label: PICK_LABEL.spread,
+      hint:  PICK_HINT.spread,
       options: [
         { betType: 'spread', pickSide: 'home', odds: match.spreadHomeOdds, eventElo: match.eventElos.spreadHome, title: `${match.homeTeam} ${homeSpreadStr}`, showAvatar: match.homeTeam },
         { betType: 'spread', pickSide: 'away', odds: match.spreadAwayOdds, eventElo: match.eventElos.spreadAway, title: `${match.awayTeam} ${awaySpreadStr}`, showAvatar: match.awayTeam },
       ],
     },
     {
-      label: 'Total Points',
+      label: PICK_LABEL.over_under,
       hint:  `combined score vs ${match.overUnderLine}`,
       options: [
         { betType: 'over_under', pickSide: 'over',  odds: match.overOdds,  eventElo: match.eventElos.over,  title: `Over ${match.overUnderLine}` },

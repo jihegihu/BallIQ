@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { summarizeRecord, isSettled } from '@/lib/record';
 import Link from 'next/link';
 import { useUser, useClerk } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
@@ -44,10 +45,8 @@ export default function AccountPage() {
     }
   }
 
-  const resolved   = user.picks.filter((p) => p.outcome !== 'pending' && p.outcome !== 'cancelled');
-  const wins       = resolved.filter((p) => p.outcome === 'win').length;
-  const losses     = resolved.filter((p) => p.outcome === 'loss').length;
-  const winRate    = resolved.length > 0 ? Math.round((wins / resolved.length) * 100) : null;
+  const resolved   = user.picks.filter((p) => isSettled(p.outcome));
+  const { wins, losses, winRate } = summarizeRecord(resolved.map((p) => p.outcome));
   const netElo     = resolved.reduce((sum, p) => sum + (p.eloDelta ?? 0), 0);
 
   if (!isLoaded) {
