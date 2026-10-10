@@ -272,6 +272,11 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                           ▲ +{proj.projectedGain}
                           <span className="ml-0.5 text-[9px] font-bold">Elo</span>
                         </p>
+                        {/* Risk only — the odds and favourite/underdog line
+                            stays on the More picks page. */}
+                        <p className="text-[10px] text-dim tabular-nums">
+                          risk <span className="text-bad font-bold">−{proj.projectedLoss}</span>
+                        </p>
                         {/* No per-button hint here — the list header already
                             explains the gesture, and an extra line is exactly
                             the height this card can't spare. */}
