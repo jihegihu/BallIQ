@@ -14,7 +14,14 @@ export const PICK_LABEL: Record<BetType, string> = {
   over_under: 'Total',
 };
 
-/** One-line explanation shown under each heading. */
+/**
+ * One-line explanation shown beside each market heading.
+ *
+ * Only the winner market is a fixed string. Margin and Total read better with
+ * their actual line spliced in ("margin vs 3.5", "combined score vs 212.5"),
+ * so BetPanel builds those per match — a generic "vs the line" was most of why
+ * the three markets blurred together.
+ */
 export const PICK_HINT: Record<BetType, string> = {
   moneyline:  'who wins the game',
   spread:     'win margin vs the line',
