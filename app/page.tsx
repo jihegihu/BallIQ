@@ -8,9 +8,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const admin = createAdminClient();
-  const from  = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  // Lookback covers games already under way so they can show as Live. Four
+  // hours clears an NFL game; shorter and a game in its final quarter would
+  // drop off the board entirely.
+  const from  = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
   // Only surface games kicking off within the next 36 hours — keeps the board
-  // focused on what's imminent (applies to every sport, World Cup included).
+  // focused on what is imminent (applies to every sport, World Cup included).
   const to    = new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await admin

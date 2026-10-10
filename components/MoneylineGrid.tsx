@@ -13,6 +13,7 @@ import TeamAvatar from '@/components/TeamAvatar';
 import RecapBanner from '@/components/RecapBanner';
 import PendingPicksBar from '@/components/PendingPicksBar';
 import BetSheet from '@/components/BetSheet';
+import LiveStrip from '@/components/LiveStrip';
 
 // Hook-per-card wrapper (hooks can't be called inside .map). Long-pressing
 // the card chrome opens the full BetSheet with a haptic thump.
@@ -81,6 +82,15 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
   const kFactor = getKFactor(user.totalPicks, user.weeksActive);
 
   const upcoming = matches.filter((m) => new Date(m.commenceTime).getTime() > Date.now());
+
+  // Games already under way. The board has always filtered these out, so they
+  // simply vanished mid-game; they now surface in a display-only rail above
+  // the board. Respects the sport filter so it never contradicts the chips.
+  const liveAll = matches.filter((m) => m.status === 'live');
+  const live =
+    sport === 'ALL'    ? liveAll :
+    sport === 'SOCCER' ? liveAll.filter((m) => SOCCER_SPORTS.includes(m.sport)) :
+    liveAll.filter((m) => m.sport === sport);
   const visible =
     sport === 'ALL'    ? upcoming :
     sport === 'SOCCER' ? upcoming.filter((m) => SOCCER_SPORTS.includes(m.sport)) :
@@ -173,6 +183,8 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
           </button>
         ))}
       </div>
+
+      <LiveStrip matches={live} />
 
       {/* Game cards */}
       {visible.length === 0 ? (

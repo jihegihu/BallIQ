@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import TeamAvatar from '@/components/TeamAvatar';
 import { useUserStore } from '@/lib/userStore';
 import Link from 'next/link';
 import { UserPick } from '@/types';
-import { calculateEloDelta, getKFactor, eventEloToProb } from '@/lib/elo';
+import { calculateEloDelta, getKFactor } from '@/lib/elo';
 import TournamentRecaps from '@/components/TournamentRecaps';
 import { summarizeRecord } from '@/lib/record';
 import { PICK_LABEL } from '@/lib/pickLabels';
@@ -379,147 +380,130 @@ export default function PicksPage() {
 }
 
 // ── Pending card ──────────────────────────────────────────────────────────────
+// Deliberately two lines, no labelled sub-boxes.
+//
+// The old card stacked eight facts inside four bordered boxes with uppercase
+// micro-labels ("YOUR PICK", "TIP-OFF", "MARKET WIN PROB", a "PENDING" badge).
+// How DraftKings' My Bets, Underdog's entries and Sleeper's matchup rows all
+// handle this: the context supplies the labels, so they print the data and
+// nothing else. "PENDING" on the Pending tab and "YOUR PICK" on My Picks are
+// both saying what the user already knows, and the probability bar was noise
+// next to the number that actually matters — the Elo at stake.
+
+/** The team a pick is really about, for the avatar. */
+function pickTeam(pick: UserPick): string {
+  const [home = '', away = ''] = pick.matchDescription.split(' vs ');
+  if (pick.pickSide === 'away') return away;
+  return home;   // home, over and under all identify with the game itself
+}
 
 function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: number; matchScore?: MatchScore }) {
-  const label      = buildPickLabel(pick);
-  const placedDate = new Date(pick.placedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const label = buildPickLabel(pick);
 
   const recalc = calculateEloDelta({
     userElo: pick.userEloAtPick, eventElo: pick.eventElo, kFactor,
     confidenceLevel: pick.confidenceLevel, betType: pick.betType, outcome: 'win',
   });
 
-  // Market-implied win probability for this pick
-  const marketProb = Math.round(eventEloToProb(pick.eventElo) * 100);
-
-  // Live score
-  const hasScore  = matchScore && matchScore.home_score != null && matchScore.away_score != null;
-  const isLive    = matchScore?.status === 'live';
-  const isFinal   = matchScore?.status === 'completed';
+  const hasScore = matchScore && matchScore.home_score != null && matchScore.away_score != null;
+  const isLive   = matchScore?.status === 'live';
+  const isFinal  = matchScore?.status === 'completed';
 
   return (
-    <div className="bg-card border border-accent/20 rounded-xl p-3">
-      <div className="flex justify-between items-start mb-1.5">
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-ink text-xs truncate">{pick.matchDescription}</p>
-          <p className="text-[10px] text-dim mt-0.5">
-            {pick.sport && <span className="text-accent/80 font-bold">{pick.sport} · </span>}
-            Placed {placedDate}
-          </p>
-        </div>
-        <span className="ml-2 text-[9px] font-black border px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 bg-accent/10 text-accent border-accent/30">
-          PENDING
-        </span>
-      </div>
+    <div className={`bg-card border rounded-xl px-3 py-2.5 flex items-center gap-3 ${
+      isLive ? 'border-emerald-500/30' : 'border-rim'
+    }`}>
+      <TeamAvatar teamName={pickTeam(pick)} size="xs" />
 
-      <div className="bg-layer rounded-lg px-2.5 py-2 mb-1.5">
-        <p className="text-[9px] text-dim uppercase tracking-widest font-semibold mb-0.5">Your Pick</p>
-        <p className="font-black text-ink text-xs">{label}</p>
-      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-black text-ink text-sm leading-tight truncate">{label}</p>
 
-      {/* Live score ticker */}
-      {hasScore ? (
-        <div className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 mb-1.5 ${
-          isLive ? 'bg-emerald-500/10 border border-emerald-500/20' :
-          isFinal ? 'bg-layer' : 'bg-layer'
-        }`}>
-          <div className="text-[10px]">
-            {isLive && <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mr-2">● Live</span>}
-            {isFinal && <span className="text-[8px] font-black text-dim uppercase tracking-widest mr-2">Final</span>}
-            <span className="font-black text-ink">
-              {matchScore.home_team?.split(' ').pop()} {matchScore.home_score}
+        {/* One status line: the score once there is one, otherwise kick-off. */}
+        {hasScore ? (
+          <p className="text-xs mt-0.5 truncate">
+            {isLive && (
+              <span className="font-black text-emerald-400 mr-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 align-middle" />
+                LIVE
+              </span>
+            )}
+            {isFinal && <span className="font-bold text-dim mr-1.5">Final</span>}
+            <span className="font-bold text-sub tabular-nums">
+              {matchScore!.home_team?.split(' ').pop()} {matchScore!.home_score}
               <span className="text-dim mx-1">–</span>
-              {matchScore.away_score} {matchScore.away_team?.split(' ').pop()}
+              {matchScore!.away_score} {matchScore!.away_team?.split(' ').pop()}
             </span>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5 bg-layer rounded-lg px-2.5 py-1.5 mb-1.5">
-          <span className="text-[9px] text-dim uppercase tracking-widest font-semibold">Tip-off</span>
-          <span className="text-[10px] font-bold text-ink ml-auto">
-            {pick.gameTime ? formatGameDate(pick.gameTime) : `Placed ${placedDate}`}
-          </span>
-        </div>
-      )}
-
-      {/* Win probability + Elo projection */}
-      <div className="flex items-center gap-2 mb-1.5">
-        <div className="flex-1">
-          <div className="flex justify-between text-[8px] text-dim mb-0.5">
-            <span>Market win prob</span>
-            <span className="font-bold text-sub">{marketProb}%</span>
-          </div>
-          <div className="h-1 bg-layer rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-accent/50" style={{ width: `${marketProb}%` }} />
-          </div>
-        </div>
+          </p>
+        ) : (
+          <p className="text-xs text-dim mt-0.5 truncate">
+            {pick.sport && <span className="font-bold text-accent/80">{pick.sport}</span>}
+            {pick.sport && pick.gameTime && <span className="mx-1">·</span>}
+            {pick.gameTime && formatGameDate(pick.gameTime)}
+          </p>
+        )}
       </div>
 
-      <div className="flex items-center text-[10px]">
-        <span className="text-dim">
-          <span className="text-emerald-400">+{recalc.projectedGain}</span>
-          <span className="mx-1">/</span>
-          <span className="text-red-400">-{recalc.projectedLoss}</span>
-          <span className="ml-1 text-dim">Elo</span>
-        </span>
-        <span className="ml-auto font-semibold text-violet-400">+{pick.xpEarned} XP</span>
+      {/* The one number that matters, with the downside underneath it. */}
+      <div className="text-right shrink-0">
+        <p className="text-base font-black text-emerald-400 tabular-nums leading-none">
+          +{recalc.projectedGain}
+        </p>
+        <p className="text-xs text-dim tabular-nums mt-0.5">−{recalc.projectedLoss}</p>
       </div>
     </div>
   );
 }
 
 // ── Result card ───────────────────────────────────────────────────────────────
+// Same two-line shape as the pending card. What earns its place here is the
+// outcome colour and the rating delta; the "WON"/"LOST" pill was saying what
+// the green/red already says, and "% odds" was detail nobody reviews a settled
+// pick for.
 
 const RESULT_CFG = {
-  win:  { border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', badge: 'WON',  badgeCls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', icon: '✓', iconCls: 'text-emerald-400', labelCls: 'text-emerald-300', eloCls: 'text-emerald-400' },
-  loss: { border: 'border-red-500/30',     bg: 'bg-red-500/10',     badge: 'LOST', badgeCls: 'bg-red-500/10 text-red-400 border-red-500/30',             icon: '✗', iconCls: 'text-red-400',     labelCls: 'text-red-300',     eloCls: 'text-red-400'     },
-  push: { border: 'border-rim',            bg: 'bg-layer',          badge: 'PUSH', badgeCls: 'bg-layer text-sub border-rim',                             icon: '—', iconCls: 'text-sub',         labelCls: 'text-sub',         eloCls: 'text-sub'         },
+  win:  { border: 'border-emerald-500/30', tone: 'text-emerald-400', mark: '✓' },
+  loss: { border: 'border-red-500/25',     tone: 'text-red-400',     mark: '✗' },
+  push: { border: 'border-rim',            tone: 'text-sub',         mark: '—' },
 } as const;
 
 function ResultCard({ pick }: { pick: UserPick }) {
-  const outcome    = pick.outcome === 'push' ? 'push' : pick.outcome === 'win' ? 'win' : 'loss';
-  const cfg        = RESULT_CFG[outcome];
-  const label      = buildPickLabel(pick);
-  const placedDate = new Date(pick.placedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const marketProb = Math.round(eventEloToProb(pick.eventElo) * 100);
+  const outcome = pick.outcome === 'push' ? 'push' : pick.outcome === 'win' ? 'win' : 'loss';
+  const cfg     = RESULT_CFG[outcome];
+  const label   = buildPickLabel(pick);
+  const settled = new Date(pick.resolvedAt ?? pick.placedAt)
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
-    <div className={`bg-card border ${cfg.border} rounded-xl p-3`}>
-      <div className="flex justify-between items-start mb-2">
+    <div className={`bg-card border ${cfg.border} rounded-xl px-3 py-2.5`}>
+      <div className="flex items-center gap-3">
+        <TeamAvatar teamName={pickTeam(pick)} size="xs" />
+
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-ink text-xs truncate">{pick.matchDescription}</p>
-          <p className="text-[10px] text-dim mt-0.5">
-            {pick.sport && <span className="text-accent/80 font-bold">{pick.sport} · </span>}
-            {placedDate}
+          <p className="font-black text-ink text-sm leading-tight truncate">
+            <span className={`${cfg.tone} mr-1.5`}>{cfg.mark}</span>
+            {label}
+          </p>
+          <p className="text-xs text-dim mt-0.5 truncate">
+            {pick.sport && <span className="font-bold text-accent/80">{pick.sport}</span>}
+            {pick.sport && <span className="mx-1">·</span>}
+            {settled}
           </p>
         </div>
-        <span className={`ml-2 text-[9px] font-black border px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${cfg.badgeCls}`}>
-          {cfg.badge}
-        </span>
-      </div>
 
-      <div className={`${cfg.bg} rounded-lg px-2.5 py-2 mb-2 flex items-center gap-2`}>
-        <span className={`font-black text-xs ${cfg.iconCls}`}>{cfg.icon}</span>
-        <p className={`font-black text-xs leading-tight ${cfg.labelCls}`}>{label}</p>
-        <span className="ml-auto text-[8px] text-dim">{marketProb}% odds</span>
-      </div>
-
-      <div className="flex items-center text-[10px]">
         {pick.eloDelta !== null && (
-          <span className={`font-bold ${cfg.eloCls}`}>
-            {pick.eloDelta >= 0 ? '▲' : '▼'} {Math.abs(pick.eloDelta)} Elo
-          </span>
+          <p className={`text-base font-black tabular-nums shrink-0 ${cfg.tone}`}>
+            {pick.eloDelta > 0 ? '+' : pick.eloDelta < 0 ? '−' : ''}{Math.abs(pick.eloDelta)}
+          </p>
         )}
-        <span className="ml-auto font-semibold text-violet-400">+{pick.xpEarned} XP</span>
       </div>
 
       {/* A push returns ±0 Elo. Without saying so, a zero delta just reads as
           a bug. */}
       {outcome === 'push' && (
-        <p className="text-[10px] text-dim mt-1.5 leading-snug">
+        <p className="text-xs text-dim mt-1.5 leading-snug">
           {pick.betType === 'over_under'
             ? 'The total landed exactly on the line'
-            : 'The result landed exactly on the spread'}
+            : 'The result landed exactly on the line'}
           {' '}— your rating is unchanged.
         </p>
       )}

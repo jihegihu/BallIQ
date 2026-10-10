@@ -27,6 +27,10 @@ export function rowToMatch(row: Record<string, unknown>): Match {
       spreadHome:    row.event_elo_sp_home as number,
       spreadAway:    row.event_elo_sp_away as number,
     },
+    // Scores — present once a game is under way. Without these the board
+    // cannot render a live score, however the status column reads.
+    homeScore: (row.home_score as number | null) ?? undefined,
+    awayScore: (row.away_score as number | null) ?? undefined,
     // ESPN enrichment (nullable columns; undefined when the migration hasn't
     // run yet or no ESPN match was found)
     homeRecord: (row.home_record as string | null) ?? undefined,
