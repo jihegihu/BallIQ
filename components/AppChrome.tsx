@@ -5,6 +5,7 @@ import EloHeader from '@/components/EloHeader';
 import BottomNav from '@/components/BottomNav';
 import OnboardingModal from '@/components/OnboardingModal';
 import PushRegistrar from '@/components/PushRegistrar';
+import PullToRefresh from '@/components/PullToRefresh';
 
 // Routes where the app shell (Elo bar + bottom nav) should not render —
 // auth screens and public legal pages viewed by signed-out visitors.
@@ -24,7 +25,9 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <OnboardingModal />
       <EloHeader />
       {/* reserves space for the fixed top bar (h-12 + notch safe area) */}
-      <div className="flex-1" style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top))' }}>{children}</div>
+      <PullToRefresh>
+        <div className="flex-1" style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top))' }}>{children}</div>
+      </PullToRefresh>
       <BottomNav />
     </>
   );

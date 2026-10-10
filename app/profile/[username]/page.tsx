@@ -1,14 +1,10 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase';
 import Link from 'next/link';
+import TierLabel from '@/components/TierLabel';
+import { tierFor } from '@/lib/tiers';
 
-function rankLabel(elo: number): { label: string; color: string } {
-  if (elo >= 2000) return { label: 'Elite',        color: '#EF4444' };
-  if (elo >= 1600) return { label: 'Expert',       color: '#F97316' };
-  if (elo >= 1200) return { label: 'Advanced',     color: '#A78BFA' };
-  if (elo >= 800)  return { label: 'Intermediate', color: '#94A3B8' };
-  return                  { label: 'Rookie',       color: '#64748B' };
-}
+
 
 const SPORT_COLS = [
   { key: 'nba_elo',  label: 'NBA'  },
@@ -50,7 +46,7 @@ export default async function PublicProfilePage({
   const winRate = picks.length > 0 ? Math.round((wins / picks.length) * 100) : null;
   const netElo  = picks.reduce((s: number, p: Row) => s + ((p.elo_delta as number) ?? 0), 0);
 
-  const globalRank = rankLabel(u.global_elo as number);
+  const globalTier = tierFor(u.global_elo as number);
 
   return (
     <main className="min-h-screen pb-10 max-w-md mx-auto px-4 pt-6">
@@ -64,18 +60,16 @@ export default async function PublicProfilePage({
         {/* Avatar */}
         <div
           className="w-14 h-14 rounded-full flex items-center justify-center shrink-0 border"
-          style={{ backgroundColor: globalRank.color + '22', borderColor: globalRank.color + '44' }}
+          style={{ backgroundColor: globalTier.hex + '22', borderColor: globalTier.hex + '44' }}
         >
-          <span className="text-2xl font-black" style={{ color: globalRank.color }}>
+          <span className="text-2xl font-black text-ink">
             {(u.username as string)?.[0]?.toUpperCase() ?? '?'}
           </span>
         </div>
 
         <div className="min-w-0">
           <p className="font-black text-ink text-lg truncate">{u.username as string}</p>
-          <p className="text-[11px] font-bold mt-0.5" style={{ color: globalRank.color }}>
-            ◆ {globalRank.label}
-          </p>
+          <TierLabel elo={u.global_elo as number} diamond className="block text-[11px] font-bold mt-0.5" />
           <p className="text-[10px] text-dim mt-0.5">
             {u.total_picks as number} picks · {u.weeks_active as number} weeks active
           </p>
@@ -112,14 +106,13 @@ export default async function PublicProfilePage({
       <div className="grid grid-cols-2 gap-2 mb-5">
         {SPORT_COLS.map(({ key, label }) => {
           const elo  = (u[key] as number) ?? 1200;
-          const rank = rankLabel(elo);
           return (
             <div key={key} className="bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center justify-between">
               <div>
                 <p className="text-[10px] text-dim font-black uppercase tracking-widest">{label}</p>
                 <p className="text-sm font-black text-ink tabular-nums">{elo.toLocaleString()}</p>
               </div>
-              <span className="text-[10px] font-bold" style={{ color: rank.color }}>{rank.label}</span>
+              <TierLabel elo={elo} className="text-[10px] font-bold" />
             </div>
           );
         })}

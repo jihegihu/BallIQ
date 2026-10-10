@@ -10,6 +10,8 @@ import { useUserStore } from '@/lib/userStore';
 import { Sport, UserPick } from '@/types';
 import { getCurrentSeason, getDaysRemaining } from '@/lib/seasons';
 import { useDragDismiss } from '@/lib/useDragDismiss';
+import { tierStyle } from '@/lib/tiers';
+import { useThemeStore } from '@/lib/themeStore';
 
 // Soccer leagues share a single rating column server-side, so EPL stands in
 // for all of them here.
@@ -22,13 +24,7 @@ const SPORT_DISPLAY: { key: Sport; label: string; members: Sport[] }[] = [
   { key: 'NCAA',   label: 'NCAA',   members: ['NCAA'] },
 ];
 
-export function sportEloRank(elo: number) {
-  if (elo >= 2000) return { label: 'Elite',        color: 'text-red-400' };
-  if (elo >= 1600) return { label: 'Expert',       color: 'text-orange-400' };
-  if (elo >= 1200) return { label: 'Advanced',     color: 'text-accent' };
-  if (elo >= 800)  return { label: 'Intermediate', color: 'text-yellow-400' };
-  return                  { label: 'Rookie',       color: 'text-sub' };
-}
+
 
 function nextTierProgress(elo: number) {
   const TIERS = [
@@ -50,6 +46,7 @@ function nextTierProgress(elo: number) {
 export default function EloSheet({ onClose }: { onClose: () => void }) {
   const user = useUserStore((s) => s.user);
   const { scrollRef, dragHandlers, sheetStyle } = useDragDismiss(onClose);
+  const theme = useThemeStore((st) => st.theme);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -65,7 +62,7 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
   const netElo     = user.globalElo - 1200;
   const biggestWin = resolved.reduce((max, p) => Math.max(max, p.eloDelta ?? 0), 0);
 
-  const eloRank  = sportEloRank(user.globalElo);
+  const eloRank  = tierStyle(user.globalElo, theme);
   const nextTier = nextTierProgress(user.globalElo);
   const season   = getCurrentSeason();
   const daysLeft = season ? getDaysRemaining(season.end) : null;
@@ -123,7 +120,7 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
               <p className="text-5xl font-black text-accent tabular-nums leading-none">
                 {user.globalElo.toLocaleString()}
               </p>
-              <p className={`text-xs font-bold mt-1 ${eloRank.color}`}>◆ {eloRank.label}</p>
+              <p className="text-xs font-bold mt-1" style={{ color: eloRank.color }}>◆ {eloRank.label}</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] text-dim uppercase tracking-widest mb-0.5">Record</p>
@@ -188,7 +185,7 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
           <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">Sport Ratings</p>
           <div className="grid grid-cols-2 gap-2">
             {sports.map(({ key, label, elo, rec }) => {
-              const rank   = sportEloRank(elo);
+              const rank   = tierStyle(elo, theme);
               const played = rec.total > 0;
               return (
                 <div
@@ -197,7 +194,7 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
                 >
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] text-dim font-black uppercase tracking-widest">{label}</p>
-                    <span className={`text-[9px] font-bold ${rank.color}`}>{rank.label}</span>
+                    <span className="text-[9px] font-bold" style={{ color: rank.color }}>{rank.label}</span>
                   </div>
                   <p className="text-lg font-black text-ink tabular-nums leading-tight">{elo.toLocaleString()}</p>
                   {played ? (

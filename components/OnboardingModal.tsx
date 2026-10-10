@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import TierLadder from '@/components/TierLadder';
 import { useOnboardingStore } from '@/lib/onboardingStore';
 
 const SLIDES = [
@@ -41,29 +42,7 @@ const SLIDES = [
     title: 'Climb the Tiers',
     subtitle: 'Everyone starts at 1,200 — the chess standard.',
     body: null,
-    extra: (
-      <div className="w-full mt-3 space-y-1.5">
-        {[
-          { label: 'Elite',         range: '2000+', color: '#EF4444', pct: 100 },
-          { label: 'Expert',        range: '1600–2000', color: '#F97316', pct: 80 },
-          { label: 'Advanced',      range: '1200–1600', color: '#A78BFA', pct: 60 },
-          { label: 'Intermediate',  range: '800–1200',  color: '#94A3B8', pct: 40 },
-          { label: 'Rookie',        range: '0–800',     color: '#64748B', pct: 20 },
-        ].map(({ label, range, color, pct }) => (
-          <div key={label} className="flex items-center gap-2">
-            <div className="w-20 shrink-0 text-right text-[10px] font-black" style={{ color }}>{label}</div>
-            <div className="flex-1 h-1.5 bg-layer rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color + '99' }} />
-            </div>
-            <div className="w-20 text-[9px] text-dim">{range}</div>
-          </div>
-        ))}
-        <p className="text-center text-[10px] text-accent font-bold mt-1">You start at Advanced ◆ 1,200</p>
-        <p className="text-center text-[11px] text-dim pt-1.5">
-          Tap a team to pick. Your rating updates automatically when games end.
-        </p>
-      </div>
-    ),
+    extra: <TierLadder />,
   },
 ];
 

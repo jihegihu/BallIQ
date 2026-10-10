@@ -41,6 +41,12 @@ interface UserStore {
   hydrated: boolean;
   /** A write failed after all retries — the board may be behind the server. */
   syncFailed: boolean;
+  /**
+   * Bumped on every manual refresh. Components that fetch their own data
+   * (the leaderboard, for one) depend on this so a pull-to-refresh reaches
+   * them too, without the store needing to know they exist.
+   */
+  refreshNonce: number;
   hydrate:    (picks: UserPick[], userPatch: Partial<User>) => void;
   refresh:    () => Promise<void>;
   submitPick: (pick: UserPick) => void;
@@ -90,6 +96,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   user: DEFAULT_USER,
   hydrated: false,
   syncFailed: false,
+  refreshNonce: 0,
 
   hydrate: (picks, userPatch) => {
     set((state) => ({
@@ -99,7 +106,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }));
   },
 
-  refresh: rehydrateFromServer,
+  // Re-reads everything this client owns from Supabase. No Odds API involved,
+  // so a refresh never spends odds credits.
+  refresh: async () => {
+    set((s) => ({ refreshNonce: s.refreshNonce + 1 }));
+    await rehydrateFromServer();
+  },
 
   submitPick: (pick: UserPick) => {
     set((state) => {

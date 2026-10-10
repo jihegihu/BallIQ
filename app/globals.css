@@ -169,3 +169,7 @@ html.native, html.native body {
   .skeleton::after { animation: none; }
   [data-confetti] { display: none !important; }
 }
+/* Pull-to-refresh spinner */
+@keyframes ptrSpin {
+  to { transform: rotate(360deg); }
+}

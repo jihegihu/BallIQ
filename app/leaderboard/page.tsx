@@ -54,6 +54,7 @@ function rankLabel(elo: number): string {
 export default function LeaderboardPage() {
   const [scope, setScope]     = useState<Scope>('global');
   const [sport, setSport]     = useState<SportTab>('global');
+  const refreshNonce          = useUserStore((s) => s.refreshNonce);
   const [rows, setRows]       = useState<LeaderRow[]>([]);
   const [myId, setMyId]       = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +79,9 @@ export default function LeaderboardPage() {
       .finally(() => setLoading(false));
   }, [sport, scope]);
 
-  useEffect(() => { loadBoard(); }, [loadBoard]);
+  // refreshNonce is bumped by pull-to-refresh, so a pull re-runs this fetch
+  // and friends' ratings update along with everything else.
+  useEffect(() => { loadBoard(); }, [loadBoard, refreshNonce]);
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
