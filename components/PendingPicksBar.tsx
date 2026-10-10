@@ -28,7 +28,7 @@ export default function PendingPicksBar() {
           {pending.length} pick{pending.length !== 1 ? 's' : ''} riding
         </span>
         <span className="text-xs font-bold text-dim">
-          potential <span className="text-emerald-400 font-black">+{potential} Elo</span>
+          potential <span className="text-good font-black">+{potential} Elo</span>
           <span className="text-accent ml-2">›</span>
         </span>
       </Link>

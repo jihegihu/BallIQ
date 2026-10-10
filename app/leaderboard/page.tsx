@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useUserStore } from '@/lib/userStore';
-import EloSparkline from '@/components/EloSparkline';
 
 type Scope = 'global' | 'friends';
 type SportTab = 'global' | 'nba' | 'nfl' | 'mlb' | 'soccer' | 'tennis';
@@ -124,7 +123,6 @@ export default function LeaderboardPage() {
 
       {/* Rating trend — renders nothing until there's history worth a line */}
       <div className="mb-4">
-        <EloSparkline />
       </div>
 
       {/* Global / Friends scope toggle */}
@@ -280,9 +278,9 @@ export default function LeaderboardPage() {
                   </p>
                   <p className="text-[10px] text-dim">
                     {rankLabel(elo)} ·{' '}
-                    <span className="text-emerald-400 font-bold">{row.wins}W</span>
+                    <span className="text-good font-bold">{row.wins}W</span>
                     <span className="mx-0.5">–</span>
-                    <span className="text-red-400 font-bold">{row.losses}L</span>
+                    <span className="text-bad font-bold">{row.losses}L</span>
                   </p>
                 </div>
 
@@ -297,7 +295,7 @@ export default function LeaderboardPage() {
                     {elo?.toLocaleString() ?? '—'}
                   </p>
                   {row.weekly_delta !== 0 && (
-                    <p className={`text-[10px] font-bold tabular-nums ${row.weekly_delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <p className={`text-[10px] font-bold tabular-nums ${row.weekly_delta > 0 ? 'text-good' : 'text-bad'}`}>
                       {row.weekly_delta > 0 ? '▲' : '▼'}{Math.abs(row.weekly_delta)} this week
                     </p>
                   )}
@@ -309,7 +307,7 @@ export default function LeaderboardPage() {
                     onClick={() => handleRemove(row.id)}
                     disabled={busy}
                     aria-label={`Remove ${row.username}`}
-                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-dim hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-40"
+                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-dim hover:text-bad hover:bg-red-500/10 transition disabled:opacity-40"
                   >
                     ✕
                   </button>

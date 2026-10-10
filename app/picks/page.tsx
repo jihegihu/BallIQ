@@ -9,6 +9,8 @@ import { calculateEloDelta, getKFactor } from '@/lib/elo';
 import TournamentRecaps from '@/components/TournamentRecaps';
 import { summarizeRecord } from '@/lib/record';
 import { PICK_LABEL } from '@/lib/pickLabels';
+import { StatTile, BreakdownRow } from '@/components/StatPieces';
+import EloSparkline from '@/components/EloSparkline';
 
 type Tab = 'pending' | 'results';
 
@@ -189,12 +191,12 @@ export default function PicksPage() {
           >
             <div className="flex items-center gap-3 text-sm font-black tabular-nums">
               <span>
-                <span className="text-emerald-400">{wins}W</span>
+                <span className="text-good">{wins}W</span>
                 <span className="text-dim mx-0.5">–</span>
-                <span className="text-red-400">{losses}L</span>
+                <span className="text-bad">{losses}L</span>
               </span>
               {winRate !== null && <span className="text-sub text-xs font-bold">{winRate}%</span>}
-              <span className={netElo >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+              <span className={netElo >= 0 ? 'text-good' : 'text-bad'}>
                 {netElo >= 0 ? '+' : ''}{netElo} Elo
               </span>
             </div>
@@ -204,71 +206,68 @@ export default function PicksPage() {
           </button>
 
           {statsOpen && (
-            <div className="mt-2">
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <div className="bg-card border border-rim rounded-xl p-2.5">
-                  <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">🏆 Best Pick</p>
-                  <p className="text-base font-black text-emerald-400">
-                    {biggestWin > 0 ? `+${biggestWin} Elo` : '—'}
-                  </p>
-                </div>
-                <div className="bg-card border border-rim rounded-xl p-2.5">
-                  <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">Last 10</p>
-                  {last10Rate !== null
-                    ? <p className={`text-base font-black ${last10Rate >= 50 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {last10Rate}% <span className="text-[10px] text-dim font-bold">{last10Wins}/{last10.length}</span>
-                      </p>
-                    : <p className="text-base font-black text-dim">—</p>
-                  }
-                </div>
+            <div className="mt-2 flex flex-col gap-2">
+              {/* Headline figures. Three uniform tiles — these are numbers,
+                  not charts, so they get no plot. */}
+              <div className="grid grid-cols-3 gap-2">
+                <StatTile
+                  label="Best"
+                  value={biggestWin > 0 ? `+${biggestWin}` : '—'}
+                  sub={biggestWin > 0 ? 'Elo' : undefined}
+                  tone={biggestWin > 0 ? 'good' : 'neutral'}
+                />
+                <StatTile
+                  label="Last 10"
+                  value={last10Rate !== null ? `${last10Rate}%` : '—'}
+                  sub={last10Rate !== null ? `${last10Wins}/${last10.length}` : undefined}
+                  tone={last10Rate === null ? 'neutral' : last10Rate >= 50 ? 'good' : 'bad'}
+                />
+                <StatTile
+                  label="Streak"
+                  value={user.currentStreak > 0 ? `${user.currentStreak}` : '—'}
+                  sub={user.currentStreak > 0 ? 'days' : undefined}
+                />
               </div>
 
-              <div className="bg-card border border-rim rounded-xl p-3 mb-2">
-                <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">By Pick Type</p>
-                <div className="space-y-2">
-                  {BET_TYPES.filter((bt) => byBetType[bt].total > 0).map((bt) => {
-                    const { total, wins: w, elo } = byBetType[bt];
-                    const rate = Math.round((w / total) * 100);
-                    return (
-                      <div key={bt} className="flex items-center gap-2">
-                        <p className="text-xs font-bold text-sub w-24 shrink-0">{BET_LABEL[bt]}</p>
-                        <div className="flex-1 h-1.5 bg-layer rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-accent/60" style={{ width: `${rate}%` }} />
-                        </div>
-                        <p className="text-[10px] text-dim w-8 text-right">{rate}%</p>
-                        <p className={`text-[10px] font-bold w-12 text-right tabular-nums ${elo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {elo >= 0 ? '+' : ''}{elo}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
+              {/* Rating trend — change over time, so this one IS a chart. */}
+              <EloSparkline days={30} />
+
+              {/* Both breakdowns share one row component: same data job, so
+                  the same form. By Sport used to be nested cards instead. */}
+              <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
+                <p className="text-xs text-dim uppercase tracking-widest font-bold mb-1">By pick type</p>
+                {BET_TYPES.filter((bt) => byBetType[bt].total > 0).map((bt) => {
+                  const { total, wins: w, elo } = byBetType[bt];
+                  return (
+                    <BreakdownRow
+                      key={bt}
+                      name={BET_LABEL[bt]}
+                      record={`${w}–${total - w}`}
+                      rate={Math.round((w / total) * 100)}
+                      net={elo}
+                    />
+                  );
+                })}
               </div>
 
               {topSports.length > 0 && (
-                <div className="bg-card border border-rim rounded-xl p-3">
-                  <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">By Sport</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {topSports.map(([sport, { w, total, elo }]) => {
-                      const rate = Math.round((w / total) * 100);
-                      return (
-                        <div key={sport} className="bg-layer rounded-lg px-2.5 py-2">
-                          <p className="text-[10px] text-dim font-black uppercase tracking-widest">{sport}</p>
-                          <p className="text-sm font-black text-ink">{w}–{total - w}</p>
-                          <p className="text-[9px] text-dim">{rate}% · <span className={elo >= 0 ? 'text-emerald-400' : 'text-red-400'}>{elo >= 0 ? '+' : ''}{elo} Elo</span></p>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
+                  <p className="text-xs text-dim uppercase tracking-widest font-bold mb-1">By sport</p>
+                  {topSports.map(([sport, { w, total, elo }]) => (
+                    <BreakdownRow
+                      key={sport}
+                      name={sport}
+                      record={`${w}–${total - w}`}
+                      rate={Math.round((w / total) * 100)}
+                      net={elo}
+                    />
+                  ))}
                 </div>
               )}
 
-              {/* Tournament recaps live inside the dropdown too — they're
-                  retrospective stats, not something to scroll past on the way
-                  to your live picks. */}
-              <div className="mt-2">
-                <TournamentRecaps picks={user.picks} />
-              </div>
+              {/* Retrospective, so it belongs behind the same disclosure as
+                  the rest of the stats rather than above the live picks. */}
+              <TournamentRecaps picks={user.picks} />
             </div>
           )}
         </div>
@@ -355,10 +354,10 @@ export default function PicksPage() {
                   >
                     <span className="text-[11px] font-black text-sub uppercase tracking-widest">{label}</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-emerald-400">{w}W</span>
+                      <span className="text-[10px] font-bold text-good">{w}W</span>
                       <span className="text-dim text-[10px]">–</span>
-                      <span className="text-[10px] font-bold text-red-400">{l}L</span>
-                      <span className={`text-[10px] font-bold ml-1.5 tabular-nums ${elo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      <span className="text-[10px] font-bold text-bad">{l}L</span>
+                      <span className={`text-[10px] font-bold ml-1.5 tabular-nums ${elo >= 0 ? 'text-good' : 'text-bad'}`}>
                         {elo >= 0 ? '+' : ''}{elo} Elo
                       </span>
                       <span className="text-dim text-sm ml-1">{collapsed ? '›' : '⌄'}</span>
@@ -422,7 +421,7 @@ function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: n
         {hasScore ? (
           <p className="text-xs mt-0.5 truncate">
             {isLive && (
-              <span className="font-black text-emerald-400 mr-1.5">
+              <span className="font-black text-good mr-1.5">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 align-middle" />
                 LIVE
               </span>
@@ -445,7 +444,7 @@ function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: n
 
       {/* The one number that matters, with the downside underneath it. */}
       <div className="text-right shrink-0">
-        <p className="text-base font-black text-emerald-400 tabular-nums leading-none">
+        <p className="text-base font-black text-good tabular-nums leading-none">
           +{recalc.projectedGain}
         </p>
         <p className="text-xs text-dim tabular-nums mt-0.5">−{recalc.projectedLoss}</p>
@@ -461,8 +460,8 @@ function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: n
 // pick for.
 
 const RESULT_CFG = {
-  win:  { border: 'border-emerald-500/30', tone: 'text-emerald-400', mark: '✓' },
-  loss: { border: 'border-red-500/25',     tone: 'text-red-400',     mark: '✗' },
+  win:  { border: 'border-emerald-500/30', tone: 'text-good', mark: '✓' },
+  loss: { border: 'border-red-500/25',     tone: 'text-bad',     mark: '✗' },
   push: { border: 'border-rim',            tone: 'text-sub',         mark: '—' },
 } as const;
 

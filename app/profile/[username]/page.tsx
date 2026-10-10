@@ -126,8 +126,8 @@ export default async function PublicProfilePage({
               const outcome  = p.outcome as string;
               const delta    = p.elo_delta as number | null;
               const outcomeColor =
-                outcome === 'win'  ? 'text-emerald-400' :
-                outcome === 'loss' ? 'text-red-400'     : 'text-sub';
+                outcome === 'win'  ? 'text-good' :
+                outcome === 'loss' ? 'text-bad'     : 'text-sub';
               const badge =
                 outcome === 'win'  ? 'WON'  :
                 outcome === 'loss' ? 'LOST' : 'PUSH';
@@ -140,7 +140,7 @@ export default async function PublicProfilePage({
                     {p.match_description as string}
                   </p>
                   {delta !== null && (
-                    <span className={`text-xs font-black tabular-nums shrink-0 ${delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-xs font-black tabular-nums shrink-0 ${delta >= 0 ? 'text-good' : 'text-bad'}`}>
                       {delta >= 0 ? '+' : ''}{delta}
                     </span>
                   )}
@@ -149,7 +149,7 @@ export default async function PublicProfilePage({
             })}
           </div>
           <p className="text-[10px] text-dim text-center mt-3">
-            Net Elo (last {picks.length}): <span className={netElo >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+            Net Elo (last {picks.length}): <span className={netElo >= 0 ? 'text-good' : 'text-bad'}>
               {netElo >= 0 ? '+' : ''}{netElo}
             </span>
           </p>

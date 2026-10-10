@@ -107,9 +107,9 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
             <div className="text-right">
               <p className="text-[10px] text-dim uppercase tracking-widest mb-0.5">Record</p>
               <p className="text-2xl font-black text-ink tabular-nums">
-                <span className="text-emerald-400">{wins}</span>
+                <span className="text-good">{wins}</span>
                 <span className="text-dim mx-1">-</span>
-                <span className="text-red-400">{losses}</span>
+                <span className="text-bad">{losses}</span>
                 {pushes > 0 && <><span className="text-dim mx-1">-</span><span className="text-sub">{pushes}</span></>}
               </p>
               {winRate !== null && <p className="text-xs text-sub mt-0.5">{winRate}% win rate</p>}
@@ -153,13 +153,13 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
             </div>
             <div className="bg-layer rounded-xl p-3 text-center">
               <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">Net Elo</p>
-              <p className={`text-sm font-black ${netElo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <p className={`text-sm font-black ${netElo >= 0 ? 'text-good' : 'text-bad'}`}>
                 {netElo >= 0 ? '+' : ''}{netElo}
               </p>
             </div>
             <div className="bg-layer rounded-xl p-3 text-center">
               <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">Best Pick</p>
-              <p className="text-sm font-black text-emerald-400">{biggestWin > 0 ? `+${biggestWin}` : '—'}</p>
+              <p className="text-sm font-black text-good">{biggestWin > 0 ? `+${biggestWin}` : '—'}</p>
             </div>
           </div>
 
@@ -182,7 +182,7 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
                   {played ? (
                     <p className="text-[10px] text-dim tabular-nums">
                       {rec.w}W–{rec.l}L
-                      <span className={`ml-1.5 font-bold ${rec.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      <span className={`ml-1.5 font-bold ${rec.net >= 0 ? 'text-good' : 'text-bad'}`}>
                         {rec.net >= 0 ? '+' : ''}{rec.net}
                       </span>
                     </p>

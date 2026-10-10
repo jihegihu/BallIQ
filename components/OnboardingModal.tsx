@@ -20,11 +20,11 @@ const SLIDES = [
           ].map(({ team, gain, risk, sub }, i) => (
             <div key={team} className={`flex flex-col items-center py-3 px-2 ${i === 1 ? 'border-l border-rim' : ''}`}>
               <p className="font-black text-xs text-ink">{team}</p>
-              <p className="text-base font-black text-emerald-500 tabular-nums mt-0.5">
+              <p className="text-base font-black text-good tabular-nums mt-0.5">
                 ▲ +{gain}<span className="ml-0.5 text-[9px] font-bold">Elo</span>
               </p>
               <p className="text-[9px] text-dim tabular-nums">
-                risk <span className="text-red-400 font-bold">−{risk}</span>
+                risk <span className="text-bad font-bold">−{risk}</span>
               </p>
               <p className="text-[9px] text-dim mt-0.5">{sub}</p>
             </div>

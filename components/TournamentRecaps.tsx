@@ -43,14 +43,14 @@ export default function TournamentRecaps({ picks }: { picks: UserPick[] }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="text-xs font-black text-ink truncate">{t.name}</p>
-                  {live && <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest shrink-0">● Live</span>}
+                  {live && <span className="text-[8px] font-black text-good uppercase tracking-widest shrink-0">● Live</span>}
                 </div>
                 <p className="text-[10px] text-dim">
                   {tally.settled > 0 ? (
                     <>
-                      <span className="text-emerald-400 font-bold">{tally.wins}W</span>
+                      <span className="text-good font-bold">{tally.wins}W</span>
                       <span className="mx-0.5">–</span>
-                      <span className="text-red-400 font-bold">{tally.losses}L</span>
+                      <span className="text-bad font-bold">{tally.losses}L</span>
                       {tally.pushes > 0 && <span className="text-sub"> · {tally.pushes}P</span>}
                       {rate !== null && <span> · {rate}% win</span>}
                     </>
@@ -61,7 +61,7 @@ export default function TournamentRecaps({ picks }: { picks: UserPick[] }) {
                 </p>
               </div>
               {tally.settled > 0 && (
-                <span className={`text-sm font-black tabular-nums shrink-0 ${tally.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <span className={`text-sm font-black tabular-nums shrink-0 ${tally.net >= 0 ? 'text-good' : 'text-bad'}`}>
                   {tally.net >= 0 ? '+' : ''}{tally.net}
                   <span className="text-[9px] text-dim font-bold ml-0.5">Elo</span>
                 </span>

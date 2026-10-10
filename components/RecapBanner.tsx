@@ -79,7 +79,7 @@ export default function RecapBanner() {
   if (!recap || dismissed) return null;
 
   const up  = recap.net >= 0;
-  const cls = up ? 'text-emerald-400' : 'text-red-400';
+  const cls = up ? 'text-good' : 'text-bad';
 
   const headline =
     recap.losses === 0 && recap.wins > 0 ? (recap.wins === 1 ? 'Called it!' : 'Clean sweep!') :
@@ -114,9 +114,9 @@ export default function RecapBanner() {
         </p>
 
         <p className="text-sm font-bold text-sub mt-2">
-          <span className="text-emerald-400">{recap.wins}W</span>
+          <span className="text-good">{recap.wins}W</span>
           <span className="text-dim mx-1">–</span>
-          <span className="text-red-400">{recap.losses}L</span>
+          <span className="text-bad">{recap.losses}L</span>
           {recap.pushes > 0 && <><span className="text-dim mx-1">–</span><span className="text-sub">{recap.pushes}P</span></>}
           <span className="text-dim ml-2">· now at {globalElo.toLocaleString()}</span>
         </p>
@@ -131,7 +131,7 @@ export default function RecapBanner() {
               </p>
               <p className="text-xs font-black text-ink truncate">
                 {recap.bestWin.matchDescription}
-                <span className="text-emerald-400 ml-1.5">+{recap.bestWin.eloDelta}</span>
+                <span className="text-good ml-1.5">+{recap.bestWin.eloDelta}</span>
               </p>
             </div>
           </div>

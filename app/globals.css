@@ -18,6 +18,8 @@
   --color-dim:    var(--c-dim);
   --color-accent: var(--c-accent);
   --color-pick:   var(--c-pick);
+  --color-good:   var(--c-good);
+  --color-bad:    var(--c-bad);
 }
 
 /* ── Raw design tokens ────────────────────────────────────────────────────── */
@@ -40,6 +42,19 @@
    */
   --c-pick:     #22D3EE; /* cyan-400 */
   --c-pick-ink: #ECFEFF; /* cyan-50 — text on a filled pick */
+  /*
+   * Win / loss. Dark mode is SELECTED, not an automatic flip: emerald-400 is
+   * only 1.92:1 on a white card and red-400 only 2.77:1, so the dark steps
+   * are illegible in light mode. These pairs were run through a contrast and
+   * colour-vision validator against each surface — the light steps clear 3:1
+   * and the pair clears the deuteranopia floor (ΔE 8.6).
+   *
+   * Red/green is the classic colour-vision collision (ΔE 6.5 deutan on dark),
+   * so every use MUST carry a secondary cue — a +/− sign or a ✓/✗ mark — and
+   * never rely on hue alone.
+   */
+  --c-good:     #34D399; /* emerald-400 */
+  --c-bad:      #F87171; /* red-400 */
 }
 
 html.light {
@@ -54,6 +69,9 @@ html.light {
   --c-accent: #7C3AED; /* violet-600 */
   --c-pick:     #0891B2; /* cyan-600 — darker so it holds on white */
   --c-pick-ink: #ECFEFF;
+  /* Validated against #FFFFFF: both clear 3:1, pair clears deutan floor (8.6). */
+  --c-good:     #059669; /* emerald-600 */
+  --c-bad:      #DC2626; /* red-600 */
 }
 
 body {

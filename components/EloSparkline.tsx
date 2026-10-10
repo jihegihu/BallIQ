@@ -35,15 +35,17 @@ export default function EloSparkline({ days = 30 }: { days?: number }) {
 
   const net  = values[values.length - 1] - values[0];
   const up   = net >= 0;
-  const tone = up ? '#34D399' : '#F87171';   // emerald-400 / red-400
+  // CSS var, not a literal: the dark-mode steps are illegible on a light card
+  // (emerald-400 is 1.92:1 on white). --c-good / --c-bad flip with the theme.
+  const tone = up ? 'var(--c-good)' : 'var(--c-bad)';
 
   return (
     <div className="bg-card border border-rim rounded-2xl p-3.5">
       <div className="flex items-baseline justify-between mb-2">
-        <p className="text-[10px] text-dim uppercase tracking-widest font-bold">
+        <p className="text-xs text-dim uppercase tracking-widest font-bold">
           Last {days} days
         </p>
-        <p className={`text-xs font-black tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+        <p className={`text-xs font-black tabular-nums ${up ? 'text-good' : 'text-bad'}`}>
           {up ? '▲ +' : '▼ '}{Math.abs(net)} Elo
         </p>
       </div>
@@ -82,8 +84,8 @@ export default function EloSparkline({ days = 30 }: { days?: number }) {
       </svg>
 
       <div className="flex justify-between mt-1">
-        <span className="text-[10px] text-dim tabular-nums">low {min.toLocaleString()}</span>
-        <span className="text-[10px] text-dim tabular-nums">high {max.toLocaleString()}</span>
+        <span className="text-xs text-dim tabular-nums">low {min.toLocaleString()}</span>
+        <span className="text-xs text-dim tabular-nums">high {max.toLocaleString()}</span>
       </div>
     </div>
   );

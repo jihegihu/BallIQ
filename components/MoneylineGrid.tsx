@@ -159,7 +159,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
           {todayLine} · {upcoming.length} game{upcoming.length !== 1 ? 's' : ''}
         </p>
         {weeklyDelta !== 0 && (
-          <p className={`text-[11px] font-black tabular-nums ${weeklyDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          <p className={`text-[11px] font-black tabular-nums ${weeklyDelta > 0 ? 'text-good' : 'text-bad'}`}>
             {weeklyDelta > 0 ? '▲ +' : '▼ '}{Math.abs(weeklyDelta)} this week
           </p>
         )}
@@ -237,7 +237,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     href={`/matches/${match.id}`}
                     className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[11px] font-bold"
                   >
-                    Full game <span className="text-sm leading-none">›</span>
+                    More picks <span className="text-sm leading-none">›</span>
                   </Link>
                 </div>
 
@@ -268,7 +268,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                         <p className={`font-black text-xs leading-tight mt-0.5 ${selected ? 'text-pick' : 'text-ink'}`}>
                           {team}
                         </p>
-                        <p className={`text-base font-black tabular-nums leading-tight ${selected ? 'text-pick' : 'text-emerald-500'}`}>
+                        <p className={`text-base font-black tabular-nums leading-tight ${selected ? 'text-pick' : 'text-good'}`}>
                           ▲ +{proj.projectedGain}
                           <span className="ml-0.5 text-[9px] font-bold">Elo</span>
                         </p>

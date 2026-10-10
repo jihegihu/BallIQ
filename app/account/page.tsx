@@ -96,14 +96,14 @@ export default function AccountPage() {
         <div className="bg-card border border-rim rounded-xl p-3">
           <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Record</p>
           <p className="text-lg font-black">
-            <span className="text-emerald-400">{wins}W</span>
+            <span className="text-good">{wins}W</span>
             <span className="text-dim mx-1">–</span>
-            <span className="text-red-400">{losses}L</span>
+            <span className="text-bad">{losses}L</span>
           </p>
         </div>
         <div className="bg-card border border-rim rounded-xl p-3">
           <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Net Elo</p>
-          <p className={`text-lg font-black ${netElo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          <p className={`text-lg font-black ${netElo >= 0 ? 'text-good' : 'text-bad'}`}>
             {netElo >= 0 ? '+' : ''}{netElo}
           </p>
         </div>
@@ -178,7 +178,7 @@ export default function AccountPage() {
       {/* ── Sign out ─────────────────────────────────────────────── */}
       <button
         onClick={() => signOut({ redirectUrl: '/sign-in' })}
-        className="w-full bg-card border border-red-500/20 rounded-2xl py-4 text-sm font-bold text-red-400 hover:bg-red-500/5 active:scale-[0.98] transition-all"
+        className="w-full bg-card border border-red-500/20 rounded-2xl py-4 text-sm font-bold text-bad hover:bg-red-500/5 active:scale-[0.98] transition-all"
       >
         Sign Out
       </button>
@@ -188,7 +188,7 @@ export default function AccountPage() {
         {!confirmDel ? (
           <button
             onClick={() => setConfirmDel(true)}
-            className="w-full text-[11px] font-bold text-dim hover:text-red-400 py-2 transition"
+            className="w-full text-[11px] font-bold text-dim hover:text-bad py-2 transition"
           >
             Delete account
           </button>
@@ -198,7 +198,7 @@ export default function AccountPage() {
             <p className="text-[11px] text-dim mb-3">
               This permanently erases your profile, ratings, picks, and friends. It can&apos;t be undone.
             </p>
-            {delErr && <p className="text-[11px] text-red-400 mb-2">{delErr}</p>}
+            {delErr && <p className="text-[11px] text-bad mb-2">{delErr}</p>}
             <div className="flex gap-2">
               <button
                 onClick={() => { setConfirmDel(false); setDelErr(''); }}

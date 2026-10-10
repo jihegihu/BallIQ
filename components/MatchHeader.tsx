@@ -41,11 +41,11 @@ export default function MatchHeader({ match, compact = false }: { match: Match; 
     <div>
       {/* Sport · time */}
       <div className="flex items-center justify-center gap-1.5 mb-3">
-        <span className="text-[10px] font-black text-accent/80 uppercase tracking-widest">
+        <span className="text-xs font-black text-accent uppercase tracking-widest">
           {SPORT_LABEL[match.sport] ?? match.sport}
         </span>
-        <span className="text-dim text-[10px]">·</span>
-        <span className="text-[11px] text-sub font-semibold">{fmtTime(match.commenceTime)}</span>
+        <span className="text-dim text-xs">·</span>
+        <span className="text-xs text-sub font-semibold">{fmtTime(match.commenceTime)}</span>
       </div>
 
       {/* Teams */}
@@ -60,7 +60,7 @@ export default function MatchHeader({ match, compact = false }: { match: Match; 
                 {team}
               </p>
               {record && (
-                <p className="text-[10px] text-dim tabular-nums mt-0.5">{record}</p>
+                <p className="text-xs text-dim tabular-nums mt-0.5">{record}</p>
               )}
             </div>
           );
@@ -73,15 +73,17 @@ export default function MatchHeader({ match, compact = false }: { match: Match; 
         <div className="relative h-1.5 bg-layer rounded-full overflow-hidden">
           <div className="absolute left-0 top-0 h-full bg-accent/60 rounded-full" style={{ width: `${homeProb}%` }} />
         </div>
+        {/* Both ends used to read "% win", which says nothing about who. */}
         <div className="flex justify-between mt-1">
-          <span className="text-[10px] text-dim tabular-nums">{homeProb}% win</span>
-          <span className="text-[10px] text-dim tabular-nums">{100 - homeProb}% win</span>
+          <span className="text-xs text-dim tabular-nums">{homeProb}%</span>
+          <span className="text-[11px] text-dim uppercase tracking-widest font-bold">chance</span>
+          <span className="text-xs text-dim tabular-nums">{100 - homeProb}%</span>
         </div>
       </div>
 
       {/* Venue / broadcast (ESPN, when available) */}
       {detailBits.length > 0 && (
-        <p className={`text-center text-[11px] text-dim ${compact ? 'mt-1.5' : 'mt-2.5'}`}>
+        <p className={`text-center text-xs text-dim ${compact ? 'mt-1.5' : 'mt-2.5'}`}>
           {detailBits.join('  ·  ')}
         </p>
       )}

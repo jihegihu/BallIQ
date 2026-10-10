@@ -33,7 +33,7 @@ export default function LiveStrip({ matches }: { matches: Match[] }) {
           <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
           <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-400" />
         </span>
-        <p className="text-xs font-black text-emerald-400 uppercase tracking-widest">
+        <p className="text-xs font-black text-good uppercase tracking-widest">
           Live now
         </p>
         <span className="text-xs text-dim">· {matches.length}</span>
