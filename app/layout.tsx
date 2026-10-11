@@ -18,7 +18,9 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "BallIQ" },
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
+      // PNG only: the old icon.svg was a different mark entirely and, being
+      // listed first, browsers preferred it over the real icon.
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: "/apple-touch-icon.png",

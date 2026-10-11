@@ -42,7 +42,7 @@ const config: CapacitorConfig = {
       // this is just the failsafe so a JS error can't strand the splash.
       launchAutoHide: true,
       launchShowDuration: 3000,
-      backgroundColor: '#06080F',
+      backgroundColor: '#14102B',   // matches the splash artwork exactly
     },
     Keyboard: {
       // Don't let iOS shove the whole webview up when the keyboard opens.
