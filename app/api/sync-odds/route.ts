@@ -471,16 +471,28 @@ async function runSync() {
     }
   }
 
-  // ── 3. Auto-void picks whose game finished 72h+ ago but never resolved ────────
+  // ── 3. Auto-void picks whose game is long finished and never resolved ───────
   // Keyed on the GAME's start time, not when the pick was placed: fixtures are
   // often known days ahead (e.g. World Cup), so voiding by placement age would
   // wrongly kill picks before their game is even played.
+  // Two guards, both learned the hard way. When the cron stopped running for
+  // three weeks, every pick in flight came back 'void' the moment a sync
+  // finally fired -- hundreds of them, wiped for a failure that was entirely
+  // ours:
+  //   1. If this run could not reach the odds API at all, we are the broken
+  //      part. Sweeping on a degraded run punishes the user for our outage.
+  //   2. The window is 7 days, not 72 hours, so a short outage cannot reach
+  //      picks that a resumed sync could still have settled.
   let voided = 0;
-  const voidCutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-  const { data: stalePicks } = await admin
-    .from('user_picks')
-    .select('id, match_id, placed_at')
-    .eq('outcome', 'pending');
+  const VOID_AFTER_DAYS = 7;
+  const voidCutoff = new Date(Date.now() - VOID_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const syncHealthy = !quotaExhausted && !oddsError;
+  const { data: stalePicks } = syncHealthy
+    ? await admin
+        .from('user_picks')
+        .select('id, match_id, placed_at')
+        .eq('outcome', 'pending')
+    : { data: null };
 
   if (stalePicks && stalePicks.length > 0) {
     const staleMatchIds = [...new Set(stalePicks.map((p) => p.match_id as string).filter(Boolean))];

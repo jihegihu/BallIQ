@@ -130,8 +130,13 @@ export default function BetPanel({ match }: { match: Match }) {
 
           <div className="grid grid-cols-2 gap-2 p-2">
             {section.options.map((opt) => {
-              const selected = !!getPickFor(opt.betType, opt.pickSide);
-              const proj     = calculateEloDelta({ userElo: user.globalElo, eventElo: opt.eventElo, kFactor, confidenceLevel: 'medium', betType: opt.betType, outcome: 'win' });
+              const placed   = getPickFor(opt.betType, opt.pickSide);
+              const selected = !!placed;
+              // Same as the board: once placed, show the locked-in figures
+              // rather than recomputing against a K-factor that just moved.
+              const proj     = placed
+                ? { projectedGain: placed.projectedGain, projectedLoss: placed.projectedLoss }
+                : calculateEloDelta({ userElo: user.globalElo, eventElo: opt.eventElo, kFactor, confidenceLevel: 'medium', betType: opt.betType, outcome: 'win' });
               const prob     = Math.round(eventEloToProb(opt.eventElo) * 100);
 
               return (

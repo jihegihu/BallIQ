@@ -249,8 +249,15 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                 <div className="grid grid-cols-2">
                   {(['home', 'away'] as const).map((side) => {
                     const team     = side === 'home' ? match.homeTeam : match.awayTeam;
-                    const proj     = side === 'home' ? homeProj : awayProj;
                     const selected = pick?.pickSide === side;
+                    // A placed pick shows the numbers it was LOCKED IN at, not
+                    // a fresh recompute. submitPick optimistically bumps
+                    // totalPicks, which nudges the K-factor along its curve, so
+                    // recomputing made the figure tick by 1 the instant you
+                    // picked — as if the odds moved because you looked at them.
+                    const proj     = selected && pick
+                      ? { projectedGain: pick.projectedGain, projectedLoss: pick.projectedLoss }
+                      : side === 'home' ? homeProj : awayProj;
 
                     return (
                       <HoldToPick

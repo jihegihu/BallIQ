@@ -76,7 +76,11 @@ export default function PicksPage() {
   const allPicks = [...user.picks].reverse();
 
   const pending = allPicks.filter((p) => p.outcome === 'pending');
-  const results = allPicks.filter((p) => p.outcome !== 'pending' && p.outcome !== 'cancelled' && p.outcome !== 'void');
+  // 'void' stays IN this list. A pick that could not be settled used to be
+  // filtered out here, so it vanished from Results with no explanation — the
+  // single most alarming thing the app can do with someone's pick. It is
+  // excluded from the win-rate maths (see lib/record.ts) but still shown.
+  const results = allPicks.filter((p) => p.outcome !== 'pending' && p.outcome !== 'cancelled');
 
   const cutoff48h    = Date.now() - 48 * 60 * 60 * 1000;
   const recentResults = results.filter((p) => new Date(p.placedAt).getTime() > cutoff48h);
@@ -461,12 +465,17 @@ function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: n
 
 const RESULT_CFG = {
   win:  { border: 'border-emerald-500/30', tone: 'text-good', mark: '✓' },
-  loss: { border: 'border-red-500/25',     tone: 'text-bad',     mark: '✗' },
-  push: { border: 'border-rim',            tone: 'text-sub',         mark: '—' },
+  loss: { border: 'border-red-500/25',     tone: 'text-bad',  mark: '✗' },
+  push: { border: 'border-rim',            tone: 'text-sub',  mark: '—' },
+  // Never graded — the final score could not be retrieved in time.
+  void: { border: 'border-rim',            tone: 'text-dim',  mark: '⊘' },
 } as const;
 
 function ResultCard({ pick }: { pick: UserPick }) {
-  const outcome = pick.outcome === 'push' ? 'push' : pick.outcome === 'win' ? 'win' : 'loss';
+  const outcome =
+    pick.outcome === 'push' ? 'push' :
+    pick.outcome === 'void' ? 'void' :
+    pick.outcome === 'win'  ? 'win'  : 'loss';
   const cfg     = RESULT_CFG[outcome];
   const label   = buildPickLabel(pick);
   const settled = new Date(pick.resolvedAt ?? pick.placedAt)
@@ -495,6 +504,15 @@ function ResultCard({ pick }: { pick: UserPick }) {
           </p>
         )}
       </div>
+
+      {/* A void pick is one the system never managed to grade. Saying so
+          plainly beats letting it look like a loss or vanish entirely. */}
+      {outcome === 'void' && (
+        <p className="text-xs text-dim mt-1.5 leading-snug">
+          Couldn&rsquo;t be settled — the final score wasn&rsquo;t available in time.
+          Your rating is unchanged and this pick doesn&rsquo;t count toward your record.
+        </p>
+      )}
 
       {/* A push returns ±0 Elo. Without saying so, a zero delta just reads as
           a bug. */}
