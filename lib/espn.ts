@@ -31,9 +31,27 @@ function norm(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+// National sides where the odds feed and ESPN simply use different names, so
+// no amount of substring matching will connect them.
+const NAME_ALIASES: Record<string, string> = {
+  usa: 'unitedstates',
+  unitedstatesofamerica: 'unitedstates',
+  southkorea: 'korearepublic',
+  czechrepublic: 'czechia',
+  turkey: 'turkiye',
+  ivorycoast: 'cotedivoire',
+  drcongo: 'congodr',
+  bosniaandherzegovina: 'bosniaherzegovina',
+};
+
+function canon(s: string): string {
+  const n = norm(s);
+  return NAME_ALIASES[n] ?? n;
+}
+
 function teamsMatch(a: string, b: string): boolean {
-  const na = norm(a);
-  const nb = norm(b);
+  const na = canon(a);
+  const nb = canon(b);
   return na === nb || na.includes(nb) || nb.includes(na);
 }
 
@@ -119,6 +137,99 @@ export async function fetchGameDetails(matches: Match[]): Promise<Map<string, Ga
         }
       } catch (err) {
         console.warn(`[espn] scoreboard ${leaguePath} ${date} failed:`, err);
+      }
+    }),
+  );
+
+  return out;
+}
+
+// ── Scores ────────────────────────────────────────────────────────────────────
+// ESPN also serves final scores, for free, with no 3-day lookback limit. That
+// matters: The Odds API's /scores endpoint only reaches back `daysFrom=3`, so
+// when a sync outage runs longer than that its results become permanently
+// unobtainable and the picks on them can only be voided. ESPN's historical
+// scoreboard closes that hole and costs no odds credits.
+
+/** Mirrors CompletedGame in lib/odds.ts, keyed by OUR match id. */
+export type EspnScore = {
+  id: string;           // the Odds API match id this resolves
+  homeScore: number;
+  awayScore: number;
+  completed: boolean;
+};
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- ESPN's JSON is unversioned */
+function readScores(ev: any): { home: string; away: string; hs: number; as: number; completed: boolean } | null {
+  const comp = ev?.competitions?.[0];
+  if (!comp) return null;
+  const competitors: any[] = comp.competitors ?? [];
+  const home = competitors.find((c) => c.homeAway === 'home');
+  const away = competitors.find((c) => c.homeAway === 'away');
+  if (!home?.team?.displayName || !away?.team?.displayName) return null;
+
+  const hs = Number(home.score);
+  const as = Number(away.score);
+  if (!Number.isFinite(hs) || !Number.isFinite(as)) return null;
+
+  return {
+    home: home.team.displayName,
+    away: away.team.displayName,
+    hs, as,
+    // 'post' alone isn't enough — a postponed game is also past its slot.
+    completed: ev?.status?.type?.completed === true,
+  };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Final scores for the given matches, from ESPN. Only returns games ESPN
+ * reports as genuinely completed, so an abandoned or postponed fixture is
+ * never graded. Any league-day that fails is skipped rather than throwing —
+ * this is a best-effort fallback, never the primary path.
+ */
+export async function fetchEspnScores(matches: Match[]): Promise<EspnScore[]> {
+  const out: EspnScore[] = [];
+
+  // Group by league, and for each match look at the day before, the day of and
+  // the day after its UTC kick-off. ESPN keys its scoreboard by US calendar
+  // date, so a 00:15 UTC fixture lives on the PREVIOUS US day — checking only
+  // the UTC date silently missed every late-evening American game.
+  const byLeague = new Map<string, { dates: Set<string>; matches: Match[] }>();
+  for (const m of matches) {
+    const leaguePath = LEAGUE_PATHS[m.sport];
+    if (!leaguePath) continue;             // tennis has no ESPN scoreboard
+    const g = byLeague.get(leaguePath) ?? { dates: new Set<string>(), matches: [] };
+    const t = new Date(m.commenceTime).getTime();
+    for (const shift of [-1, 0, 1]) {
+      g.dates.add(espnDate(new Date(t + shift * 86_400_000).toISOString()));
+    }
+    g.matches.push(m);
+    byLeague.set(leaguePath, g);
+  }
+
+  await Promise.all(
+    [...byLeague.entries()].map(async ([leaguePath, { dates, matches: group }]) => {
+      const events: EspnEvent[] = [];
+      await Promise.all(
+        [...dates].map(async (date) => {
+          try {
+            events.push(...(await fetchScoreboard(leaguePath, date)));
+          } catch (err) {
+            console.warn('[espn] scoreboard fetch failed', leaguePath, date, err);
+          }
+        }),
+      );
+
+      for (const ev of events) {
+        const parsed = readScores(ev);
+        if (!parsed || !parsed.completed) continue;
+        const hit = group.find(
+          (m) => teamsMatch(m.homeTeam, parsed.home) && teamsMatch(m.awayTeam, parsed.away),
+        );
+        if (hit && !out.some((o) => o.id === hit.id)) {
+          out.push({ id: hit.id, homeScore: parsed.hs, awayScore: parsed.as, completed: true });
+        }
       }
     }),
   );

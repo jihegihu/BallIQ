@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchOdds, fetchScores, CompletedGame, OddsQuotaError } from '@/lib/odds';
-import { fetchGameDetails } from '@/lib/espn';
+import { fetchGameDetails, fetchEspnScores } from '@/lib/espn';
 import { createAdminClient } from '@/lib/supabase';
 import { sendApnsPush } from '@/lib/apns';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
@@ -106,6 +106,12 @@ const SPORT_COL_MAP: Record<string, string> = {
 // Cron calls GET with Authorization: Bearer {CRON_SECRET}. Without a configured
 // secret the endpoint refuses to run rather than defaulting to open — an open
 // sync endpoint is an Odds API credit bomb (anyone could drain the quota).
+// Serverless functions default to a 10s ceiling. This route fans out across
+// nine sports for odds, fetches scores, enriches from ESPN and then settles
+// every pending pick — comfortably past that, so it was being killed mid-run
+// and leaving nothing synced. 60s is the cap on Vercel Hobby.
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -257,6 +263,56 @@ async function runSync() {
         return [] as CompletedGame[];
       });
   let resolved = 0;
+
+  // ── 2b. ESPN fallback for games the odds feed could not score ───────────────
+  // The Odds API /scores endpoint only looks back `daysFrom=3`. Any game older
+  // than that is permanently ungradeable through it, so a sync outage longer
+  // than three days used to mean those picks could only ever be voided —
+  // which is exactly what happened when the cron stopped for three weeks.
+  //
+  // ESPN's scoreboard has no such limit and costs nothing, so it fills the
+  // gaps. Odds API results always win where both have an answer; ESPN is only
+  // consulted for matches it left unscored, and only reports games it marks
+  // genuinely completed (so a postponed fixture is never graded).
+  let espnFilled = 0;
+  try {
+    const scoredIds = new Set(scoredGames.map((g) => g.id));
+    const { data: gapRows } = await admin
+      .from('user_picks')
+      .select('match_id, matches(id, sport, home_team, away_team, commence_time)')
+      .eq('outcome', 'pending');
+
+    const gaps = new Map<string, Match>();
+    for (const row of (gapRows ?? [])) {
+      const m = (row as Record<string, unknown>).matches as Record<string, unknown> | null;
+      if (!m?.id || scoredIds.has(m.id as string)) continue;
+      // Only look back for games that have actually finished.
+      if (new Date(m.commence_time as string).getTime() > Date.now() - 3 * 60 * 60 * 1000) continue;
+      gaps.set(m.id as string, {
+        id: m.id as string,
+        sport: m.sport as Sport,
+        homeTeam: m.home_team as string,
+        awayTeam: m.away_team as string,
+        commenceTime: m.commence_time as string,
+      } as Match);
+    }
+
+    if (gaps.size > 0) {
+      const espn = await fetchEspnScores([...gaps.values()]);
+      for (const e of espn) {
+        scoredGames.push({
+          id: e.id,
+          sport: gaps.get(e.id)!.sport,
+          homeScore: e.homeScore,
+          awayScore: e.awayScore,
+          completed: true,
+        });
+        espnFilled++;
+      }
+    }
+  } catch (err) {
+    console.warn('[sync-odds] ESPN score fallback failed:', err);
+  }
 
   // Persist live + final scores so the picks page can show a real score ticker
   if (scoredGames.length > 0) {
@@ -524,7 +580,8 @@ async function runSync() {
     synced:   matches.length,
     resolved,
     ...(botPicks > 0 ? { botPicks } : {}),
-    ...(voided > 0   ? { voided }   : {}),
+    ...(voided > 0      ? { voided }      : {}),
+    ...(espnFilled > 0  ? { espnFilled }  : {}),
     ...(quotaExhausted
       ? { quotaExhausted: true, error: 'Odds API monthly limit reached — new games and results are paused until the quota resets.' }
       : oddsError       ? { oddsError }
