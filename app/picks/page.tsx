@@ -412,6 +412,27 @@ function pickTeam(pick: UserPick): string {
   return home;   // home, over and under all identify with the game itself
 }
 
+/** "Boston Celtics" -> "Celtics". Keeps the subtitle short enough to fit. */
+function shortTeam(team: string): string {
+  const parts = team.trim().split(' ');
+  return parts.length > 1 ? parts[parts.length - 1] : team;
+}
+
+/**
+ * The fixture, phrased for whichever pick type it is.
+ *
+ * Without this a pick read "76ers to Win" with no hint of who they were
+ * playing — fine on the board where the card shows both teams, useless on a
+ * list of picks made days ago. Totals get the full matchup since the pick is
+ * about the game rather than a side.
+ */
+function matchupLabel(pick: UserPick): string {
+  const [home = '', away = ''] = pick.matchDescription.split(' vs ');
+  if (!home || !away) return '';
+  if (pick.betType === 'over_under') return `${shortTeam(away)} vs ${shortTeam(home)}`;
+  return `vs ${shortTeam(pick.pickSide === 'away' ? home : away)}`;
+}
+
 function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: number; matchScore?: MatchScore }) {
   const label = buildPickLabel(pick);
 
@@ -452,7 +473,9 @@ function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: n
         ) : (
           <p className="text-xs text-dim mt-0.5 truncate">
             {pick.sport && <span className="font-bold text-accent/80">{pick.sport}</span>}
-            {pick.sport && pick.gameTime && <span className="mx-1">·</span>}
+            {pick.sport && <span className="mx-1">·</span>}
+            {matchupLabel(pick)}
+            {pick.gameTime && <span className="mx-1">·</span>}
             {pick.gameTime && formatGameDate(pick.gameTime)}
           </p>
         )}
@@ -506,6 +529,8 @@ function ResultCard({ pick }: { pick: UserPick }) {
           <p className="text-xs text-dim mt-0.5 truncate">
             {pick.sport && <span className="font-bold text-accent/80">{pick.sport}</span>}
             {pick.sport && <span className="mx-1">·</span>}
+            {matchupLabel(pick)}
+            <span className="mx-1">·</span>
             {settled}
           </p>
         </div>
