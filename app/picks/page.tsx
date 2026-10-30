@@ -127,35 +127,47 @@ export default function PicksPage() {
 
   // By bet type
   const BET_TYPES = ['moneyline', 'spread', 'over_under'] as const;
+  // Every breakdown goes through summarizeRecord, same as the banner above.
+  // These used to count `total` as every row and render `w–(total-w)`, which
+  // silently booked each push and each void as a LOSS — so "by pick type"
+  // disagreed with the headline record and with what you can read off your
+  // own results list.
   const byBetType = Object.fromEntries(
     BET_TYPES.map((bt) => {
-      const sub  = results.filter((p) => p.betType === bt);
-      const w    = sub.filter((p) => p.outcome === 'win').length;
-      const elo  = sub.reduce((s, p) => s + (p.eloDelta ?? 0), 0);
-      return [bt, { total: sub.length, wins: w, elo }];
+      const sub = results.filter((p) => p.betType === bt);
+      return [bt, {
+        ...summarizeRecord(sub.map((p) => p.outcome)),
+        elo: sub.reduce((s, p) => s + (p.eloDelta ?? 0), 0),
+      }];
     })
-  ) as Record<string, { total: number; wins: number; elo: number }>;
+  ) as Record<string, ReturnType<typeof summarizeRecord> & { elo: number }>;
 
   // By sport
-  const sportMap = new Map<string, { w: number; total: number; elo: number }>();
+  const sportBuckets = new Map<string, UserPick[]>();
   for (const p of results) {
     if (!p.sport) continue;
-    const curr = sportMap.get(p.sport) ?? { w: 0, total: 0, elo: 0 };
-    sportMap.set(p.sport, {
-      w:     curr.w + (p.outcome === 'win' ? 1 : 0),
-      total: curr.total + 1,
-      elo:   curr.elo + (p.eloDelta ?? 0),
-    });
+    const list = sportBuckets.get(p.sport) ?? [];
+    list.push(p);
+    sportBuckets.set(p.sport, list);
   }
-  const topSports = [...sportMap.entries()]
-    .filter(([, v]) => v.total >= 1)
+  const topSports = [...sportBuckets.entries()]
+    .map(([sport, list]) => [sport, {
+      ...summarizeRecord(list.map((p) => p.outcome)),
+      elo: list.reduce((s, p) => s + (p.eloDelta ?? 0), 0),
+    }] as const)
+    .filter(([, v]) => v.settled > 0)
     .sort((a, b) => b[1].elo - a[1].elo)
     .slice(0, 4);
 
-  // Last 10 win rate
-  const last10      = results.slice(0, 10);
-  const last10Wins  = last10.filter((p) => p.outcome === 'win').length;
-  const last10Rate  = last10.length > 0 ? Math.round((last10Wins / last10.length) * 100) : null;
+  // Last 10 — the last ten picks that actually went one way or the other.
+  // Including pushes and voids made "7/10" mean something different here than
+  // it did anywhere else on the page.
+  const last10Rec   = summarizeRecord(
+    results.filter((p) => p.outcome === 'win' || p.outcome === 'loss').slice(0, 10).map((p) => p.outcome),
+  );
+  const last10Wins  = last10Rec.wins;
+  const last10Count = last10Rec.decided;
+  const last10Rate  = last10Rec.winRate;
 
   const BET_LABEL = PICK_LABEL;
 
@@ -223,7 +235,7 @@ export default function PicksPage() {
                 <StatTile
                   label="Last 10"
                   value={last10Rate !== null ? `${last10Rate}%` : '—'}
-                  sub={last10Rate !== null ? `${last10Wins}/${last10.length}` : undefined}
+                  sub={last10Rate !== null ? `${last10Wins}/${last10Count}` : undefined}
                   tone={last10Rate === null ? 'neutral' : last10Rate >= 50 ? 'good' : 'bad'}
                 />
                 <StatTile
@@ -240,14 +252,14 @@ export default function PicksPage() {
                   the same form. By Sport used to be nested cards instead. */}
               <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
                 <p className="text-xs text-dim uppercase tracking-widest font-bold mb-1">By pick type</p>
-                {BET_TYPES.filter((bt) => byBetType[bt].total > 0).map((bt) => {
-                  const { total, wins: w, elo } = byBetType[bt];
+                {BET_TYPES.filter((bt) => byBetType[bt].settled > 0).map((bt) => {
+                  const { wins, losses, pushes, winRate, elo } = byBetType[bt];
                   return (
                     <BreakdownRow
                       key={bt}
                       name={BET_LABEL[bt]}
-                      record={`${w}–${total - w}`}
-                      rate={Math.round((w / total) * 100)}
+                      record={pushes > 0 ? `${wins}–${losses}–${pushes}` : `${wins}–${losses}`}
+                      rate={winRate ?? 0}
                       net={elo}
                     />
                   );
@@ -257,12 +269,12 @@ export default function PicksPage() {
               {topSports.length > 0 && (
                 <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
                   <p className="text-xs text-dim uppercase tracking-widest font-bold mb-1">By sport</p>
-                  {topSports.map(([sport, { w, total, elo }]) => (
+                  {topSports.map(([sport, { wins, losses, pushes, winRate, elo }]) => (
                     <BreakdownRow
                       key={sport}
                       name={sport}
-                      record={`${w}–${total - w}`}
-                      rate={Math.round((w / total) * 100)}
+                      record={pushes > 0 ? `${wins}–${losses}–${pushes}` : `${wins}–${losses}`}
+                      rate={winRate ?? 0}
                       net={elo}
                     />
                   ))}

@@ -267,7 +267,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                         onCommit={() => placeMoneyline(match, side)}
                         onRemove={() => { const p = getPendingMoneyline(match.id); if (p) cancelPick(p.id); }}
                         className={`flex flex-col items-center py-2 px-1.5 transition-colors ${
-                          side === 'away' ? 'border-l border-rim' : ''
+                          side === 'away' ? 'border-l border-rim rounded-br-2xl' : 'rounded-bl-2xl'
                         } ${locked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-layer'}`}
                         selectedClassName="bg-pick/15 ring-1 ring-inset ring-pick/50"
                       >
