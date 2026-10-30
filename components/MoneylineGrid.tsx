@@ -14,6 +14,7 @@ import RecapBanner from '@/components/RecapBanner';
 import PendingPicksBar from '@/components/PendingPicksBar';
 import BetSheet from '@/components/BetSheet';
 import LiveStrip from '@/components/LiveStrip';
+import { useLiveScores } from '@/lib/useLiveScores';
 
 // Hook-per-card wrapper (hooks can't be called inside .map). Long-pressing
 // the card chrome opens the full BetSheet with a haptic thump.
@@ -86,7 +87,15 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
   // Games already under way. The board has always filtered these out, so they
   // simply vanished mid-game; they now surface in a display-only rail above
   // the board. Respects the sport filter so it never contradicts the chips.
-  const liveAll = matches.filter((m) => m.status === 'live');
+  // In progress by the CLOCK, not by stored status. A game that kicked off
+  // since the last sync still reads 'pending' in the database, so keying off
+  // status meant a live game stayed invisible until a sync happened to run —
+  // which on a 2-hourly schedule could be most of the game.
+  const liveAll = matches.filter((m) => {
+    if (m.status === 'completed') return false;
+    const t = new Date(m.commenceTime).getTime();
+    return t <= Date.now() && t > Date.now() - 4 * 60 * 60 * 1000;
+  });
   const live =
     sport === 'ALL'    ? liveAll :
     sport === 'SOCCER' ? liveAll.filter((m) => SOCCER_SPORTS.includes(m.sport)) :
@@ -95,6 +104,9 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
     sport === 'ALL'    ? upcoming :
     sport === 'SOCCER' ? upcoming.filter((m) => SOCCER_SPORTS.includes(m.sport)) :
     upcoming.filter((m) => m.sport === sport);
+
+  // Only polls while something is actually in progress; costs no odds credits.
+  const liveScores = useLiveScores(liveAll.length > 0);
 
   function getPendingMoneyline(matchId: string): UserPick | undefined {
     return user.picks.find(
@@ -184,7 +196,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
         ))}
       </div>
 
-      <LiveStrip matches={live} />
+      <LiveStrip matches={live} scores={liveScores} />
 
       {/* Game cards */}
       {visible.length === 0 ? (

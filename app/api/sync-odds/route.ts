@@ -116,10 +116,11 @@ export const maxDuration = 60;
 export async function GET(req: NextRequest) {
   const auth = checkCronAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  return runSync();
+  // ?full=1 forces every sport to be queried — the daily discovery sweep.
+  return runSync(req.nextUrl.searchParams.get('full') === '1');
 }
 
-async function runSync() {
+async function runSync(fullSweep = false) {
   if (!process.env.ODDS_API_KEY) {
     return NextResponse.json({ error: 'ODDS_API_KEY not set' }, { status: 400 });
   }
@@ -134,7 +135,41 @@ async function runSync() {
   let quotaExhausted: boolean = false;
   let oddsError = '';
 
-  const matches = await fetchOdds([...ALL_SPORTS]).catch((err) => {
+  // Which sports to spend odds credits on.
+  //
+  // The odds endpoint bills markets x regions, and we ask for three markets in
+  // one region — so every sport costs 3 credits EVERY run, in season or not.
+  // Querying all nine was ~24 credits a sync spent largely on leagues with no
+  // fixture for days (MLB in November, a soccer league that plays twice a
+  // week).
+  //
+  // A sport earns its request if it has a game inside DISCOVERY_WINDOW_DAYS.
+  // This self-heals: skipping a league does not delete its existing fixtures,
+  // so as time passes a game 10 days out becomes 3 days out and the league
+  // comes back on its own.
+  //
+  // The exception is a season starting from an empty table — nothing in the DB
+  // means nothing to detect. A full sweep (?full=1, which the daily Vercel
+  // cron uses) queries every sport and picks up newly published schedules.
+  const DISCOVERY_WINDOW_DAYS = 10;
+  let sportsQueried: string[] = [...ALL_SPORTS];
+
+  if (!fullSweep) {
+    const horizon = new Date(Date.now() + DISCOVERY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const { data: upcomingRows } = await admin
+      .from('matches')
+      .select('sport')
+      .gte('commence_time', new Date().toISOString())
+      .lte('commence_time', horizon);
+
+    const active = new Set((upcomingRows ?? []).map((r) => r.sport as string));
+    const lean = ALL_SPORTS.filter((s) => active.has(s));
+    // If the table tells us nothing, fall back to everything rather than
+    // silently syncing zero sports.
+    if (lean.length > 0) sportsQueried = lean;
+  }
+
+  const matches = await fetchOdds(sportsQueried as Sport[]).catch((err) => {
     if (err instanceof OddsQuotaError) quotaExhausted = true;
     else oddsError = err?.message ?? String(err);
     return [] as Match[];
@@ -578,6 +613,8 @@ async function runSync() {
     ...(botPicks > 0 ? { botPicks } : {}),
     ...(voided > 0      ? { voided }      : {}),
     ...(espnFilled > 0  ? { espnFilled }  : {}),
+    sportsQueried: sportsQueried.length,
+    ...(fullSweep ? { fullSweep: true } : {}),
     ...(quotaExhausted
       ? { quotaExhausted: true, error: 'Odds API monthly limit reached — new games and results are paused until the quota resets.' }
       : oddsError       ? { oddsError }

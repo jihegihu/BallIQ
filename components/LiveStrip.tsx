@@ -17,13 +17,21 @@ import Link from 'next/link';
 import { Match } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
 import { hapticImpact } from '@/lib/haptics';
+import type { LiveScore } from '@/lib/useLiveScores';
 
 function shortName(team: string): string {
   const parts = team.split(' ');
   return parts.length > 1 ? parts[parts.length - 1] : team;
 }
 
-export default function LiveStrip({ matches }: { matches: Match[] }) {
+export default function LiveStrip({
+  matches,
+  scores,
+}: {
+  matches: Match[];
+  /** Fresher scores polled from ESPN; fall back to whatever the sync stored. */
+  scores?: Map<string, LiveScore>;
+}) {
   if (matches.length === 0) return null;
 
   return (
@@ -42,7 +50,10 @@ export default function LiveStrip({ matches }: { matches: Match[] }) {
       {/* Horizontal rail: live games are a glance, not the main event. */}
       <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1">
         {matches.map((m) => {
-          const hasScore = m.homeScore != null && m.awayScore != null;
+          const fresh = scores?.get(m.id);
+          const hs = fresh?.homeScore ?? m.homeScore ?? null;
+          const as = fresh?.awayScore ?? m.awayScore ?? null;
+          const hasScore = hs != null && as != null;
           return (
             <Link
               key={m.id}
@@ -52,8 +63,8 @@ export default function LiveStrip({ matches }: { matches: Match[] }) {
             >
               {(['away', 'home'] as const).map((side) => {
                 const team  = side === 'home' ? m.homeTeam : m.awayTeam;
-                const score = side === 'home' ? m.homeScore : m.awayScore;
-                const other = side === 'home' ? m.awayScore : m.homeScore;
+                const score = side === 'home' ? hs : as;
+                const other = side === 'home' ? as : hs;
                 const leading = hasScore && score != null && other != null && score > other;
                 return (
                   <div key={side} className="flex items-center gap-2 py-0.5">
