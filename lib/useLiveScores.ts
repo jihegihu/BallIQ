@@ -23,10 +23,10 @@ export function useLiveScores(enabled: boolean): Map<string, LiveScore> {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      setScores(new Map());
-      return;
-    }
+    // No synchronous setState here — clearing on disable would cascade a
+    // render for no benefit. When nothing is in progress the consumer isn't
+    // reading these anyway, and the next enable refetches immediately.
+    if (!enabled) return;
 
     let cancelled = false;
 
