@@ -56,7 +56,7 @@ export default function BetSheet({ match, onClose }: { match: Match; onClose: ()
           className="overflow-y-auto overscroll-contain px-4 pt-2"
           style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
         >
-          <MatchHeader match={match} compact />
+          <MatchHeader match={match} compact dragHandlers={dragHandlers} />
           <div className="mt-4">
             <BetPanel match={match} />
           </div>

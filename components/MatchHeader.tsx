@@ -32,13 +32,36 @@ function fmtTime(iso: string) {
   } catch { return iso; }
 }
 
-export default function MatchHeader({ match, compact = false }: { match: Match; compact?: boolean }) {
+export default function MatchHeader({
+  match,
+  compact = false,
+  dragHandlers,
+}: {
+  match: Match;
+  compact?: boolean;
+  /**
+   * Spread onto the sport/teams block so a sheet can use it as a drag
+   * surface. Nothing in that block is interactive — it is logos, names and
+   * "vs" — so handing the whole area to the gesture costs no tap targets and
+   * makes the sheet far easier to flick away. The probability bar below is
+   * left out on purpose: it is the first thing worth reading rather than
+   * grabbing.
+   */
+  dragHandlers?: React.HTMLAttributes<HTMLDivElement>;
+}) {
   const homeProb = Math.round(eventEloToProb(match.eventElos.moneylineHome) * 100);
 
   const detailBits = [match.venue, match.broadcast].filter(Boolean) as string[];
 
   return (
     <div>
+      {/* Drag zone: sport line through the teams row.
+          pan-y rather than touch-none, deliberately. touch-none would stop the
+          sheet scrolling whenever a finger happened to land on the header. With
+          pan-y the browser keeps scrolling: dragging UP scrolls the content and
+          fires pointercancel, which aborts the drag, while dragging DOWN at the
+          top has nowhere to scroll, so the dismiss gesture runs. Both work. */}
+      <div {...dragHandlers} className={dragHandlers ? 'touch-pan-y cursor-grab active:cursor-grabbing' : undefined}>
       {/* Sport · time */}
       <div className="flex items-center justify-center gap-1.5 mb-3">
         <span className="text-xs font-black text-accent uppercase tracking-widest">
@@ -66,6 +89,7 @@ export default function MatchHeader({ match, compact = false }: { match: Match; 
           );
         })}
         <p className="order-2 text-dim font-black text-xs uppercase">vs</p>
+      </div>
       </div>
 
       {/* Win probability */}
