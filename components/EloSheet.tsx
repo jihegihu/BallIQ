@@ -67,7 +67,7 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
     .sort((a, b) => b.rec.total - a.rec.total || b.elo - a.elo);
 
   return (
-    <div className="fixed inset-0 z-[70]">
+    <div data-sheet className="fixed inset-0 z-[70]">
       <button
         aria-label="Close"
         onClick={onClose}

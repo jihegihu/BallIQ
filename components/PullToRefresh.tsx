@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/lib/userStore';
 import { hapticImpact, hapticSuccess } from '@/lib/haptics';
+import { isPullToRefreshLocked } from '@/lib/pullRefreshLock';
 
 const TRIGGER_PX   = 72;   // pull past this and release to refresh
 const MAX_PULL_PX  = 120;  // visual ceiling
@@ -62,6 +63,15 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
       if (busy.current || e.touches.length !== 1) return;
+      // A swipe that begins inside a bottom sheet belongs to that sheet. This
+      // listener is on `document`, so without the check a flick dismissing a
+      // sheet also fed the pull underneath it — overshoot the sheet's
+      // threshold and the page reloaded.
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.('[data-sheet], [role="dialog"]')) return;
+      // And for the moment just after a sheet closes, while the finger is
+      // usually still moving.
+      if (isPullToRefreshLocked()) return;
       // Only arm at the very top of the document, so normal scrolling is
       // never hijacked.
       if (window.scrollY > 0) return;

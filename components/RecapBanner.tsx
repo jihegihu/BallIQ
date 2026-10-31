@@ -87,7 +87,7 @@ export default function RecapBanner() {
     recap.wins > 0 ? 'Mixed bag' : 'Tough slate';
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-4">
+    <div data-sheet role="dialog" aria-modal="true" className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-4">
       {/* Celebration only when the slate actually went your way — a losing
           night shouldn't get a party. */}
       {up && recap.net > 0 && <Confetti />}

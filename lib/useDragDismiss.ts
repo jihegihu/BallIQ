@@ -9,6 +9,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { hapticImpact } from '@/lib/haptics';
+import { lockPullToRefresh } from '@/lib/pullRefreshLock';
 
 // Tuned down from 110px / 0.5. The sheet was genuinely hard to dismiss: you
 // had to find a 15px handle AND drag a third of the screen. 72px is still
@@ -60,6 +61,9 @@ export function useDragDismiss(onClose: () => void) {
     if (dy > CLOSE_DISTANCE_PX || velocity > CLOSE_VELOCITY) {
       hapticImpact('light');
       setDragY(0);
+      // The finger is still travelling downward as the sheet unmounts — hold
+      // pull-to-refresh off until it has left the screen.
+      lockPullToRefresh();
       onClose();
     } else {
       setDragY(0);   // snap back

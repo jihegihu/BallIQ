@@ -22,7 +22,7 @@ export default function BetSheet({ match, onClose }: { match: Match; onClose: ()
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[60]">
+    <div data-sheet className="fixed inset-0 z-[60]">
       {/* Backdrop */}
       <button
         aria-label="Close"
