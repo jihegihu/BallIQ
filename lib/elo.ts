@@ -133,8 +133,21 @@ export function eventEloToProb(eventElo: number): number {
 export const RATING_DAMPEN = 0.5;
 /** Flat per-pick reward, as a fraction of K. Strategy-neutral — see above. */
 export const PARTICIPATION_BONUS = 0.12;
-/** A loss is never completely free, even on a heavy underdog. */
-const MIN_LOSS = 3;
+/**
+ * The smallest share of its fair value a loss may keep.
+ *
+ * The bonus is a flat subtraction, so on a heavy underdog it would otherwise
+ * swallow the loss whole — a 5%, 10% and 15% longshot all collapsed to the
+ * same floor of 3, which says nothing about how big an underdog each was.
+ * Capping the bonus at 60% of the fair loss keeps the number proportional to
+ * the risk taken: roughly 1 / 2 / 3 / 4 / 7 / 9 across the 5%-30% band.
+ *
+ * It also stops deep longshots being free lottery tickets. Their expected
+ * value drops below the rest (about +2 at 8%, against +6 in the normal
+ * range), so spamming 10% underdogs is mildly worse than picking sensibly —
+ * without making underdogs unattractive generally.
+ */
+const LOSS_RETAIN = 0.4;
 
 export function calculateEloDelta({
   userElo,
@@ -166,9 +179,17 @@ export function calculateEloDelta({
   const stake      = kFactor * confMult * spreadMult;
   const bonus      = kFactor * PARTICIPATION_BONUS;
 
-  const projectedGain = Math.max(1, Math.round(stake * (1 - expectedScore) + bonus));
+  // The loss the odds alone would impose, before any participation bonus.
+  const fairLoss = stake * expectedScore;
+  // Soften it, but never by more than (1 - LOSS_RETAIN) of itself.
+  const softened = Math.max(fairLoss * LOSS_RETAIN, fairLoss - bonus);
+  // Whatever the loss actually gave up is what the gain receives, so the two
+  // stay two halves of one transfer rather than drifting apart.
+  const appliedBonus = fairLoss - softened;
+
+  const projectedGain = Math.max(1, Math.round(stake * (1 - expectedScore) + appliedBonus));
   const projectedLoss = Math.min(
-    Math.max(MIN_LOSS, Math.round(stake * expectedScore - bonus)),
+    Math.max(1, Math.round(softened)),
     Math.max(0, userElo - ELO_FLOOR),
   );
 
