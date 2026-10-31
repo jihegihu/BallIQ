@@ -79,11 +79,12 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
         className="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-x border-rim rounded-t-3xl max-h-[88dvh] flex flex-col animate-[sheetUp_.28s_cubic-bezier(0.32,0.72,0,1)]"
       >
         {/* Drag surface */}
-        <div {...dragHandlers} className="pt-2.5 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none">
+        <div {...dragHandlers} className="pt-3 pb-2.5 shrink-0 cursor-grab active:cursor-grabbing touch-none">
           <div className="w-10 h-1 bg-rim rounded-full mx-auto" />
         </div>
 
         <div
+          {...dragHandlers}
           ref={scrollRef as React.Ref<HTMLDivElement>}
           className="overflow-y-auto overscroll-contain px-5 pt-2"
           style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}

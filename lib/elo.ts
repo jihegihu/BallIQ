@@ -102,6 +102,39 @@ export function eventEloToProb(eventElo: number): number {
 // This is called TWICE:
 //   1. Before the pick (to show the user projected gain/loss)
 //   2. After the game (to calculate the actual Elo change)
+//
+// Two corrections live here, both aimed at the same complaint: that the board
+// only ever seemed to offer losses.
+//
+// 1. RATING_DAMPEN. Expected score was measured from the user's live rating,
+//    so climbing made every pick worse. At 1400 EVERY market probability had
+//    negative expected value — picking at exactly the market rate bled rating.
+//    That is standard Elo (you must keep beating expectations) but it made the
+//    game feel rigged. Damping halves how far the rating shifts expectations,
+//    so the penalty for being good is real but not punishing.
+//
+// 2. PARTICIPATION_BONUS. Added to the gain and taken off the loss. This is
+//    provably neutral between favourites and underdogs:
+//        EV = p·gain − (1−p)·loss
+//           = p(K(1−E)) − (1−p)(K·E) + B
+//           = K(p − E) + B
+//    At the baseline rating E == p, so EV == B for EVERY market probability —
+//    it lifts a 15% underdog and an 85% favourite by exactly the same amount
+//    and cannot be farmed by always picking one or the other. Above baseline
+//    E > p, so the bonus erodes as you climb: a market-rate picker levels off
+//    near 1375 rather than inflating forever, and going higher still requires
+//    genuinely beating the market.
+//
+// The bonus is deliberately NOT scaled by the confidence or spread multiplier.
+// Scaling it would make spread picks carry 1.35× the bonus and therefore more
+// expected value than moneyline, which would push everyone onto spreads.
+
+/** How much of the user's distance from 1200 counts toward expectations. */
+export const RATING_DAMPEN = 0.5;
+/** Flat per-pick reward, as a fraction of K. Strategy-neutral — see above. */
+export const PARTICIPATION_BONUS = 0.12;
+/** A loss is never completely free, even on a heavy underdog. */
+const MIN_LOSS = 3;
 
 export function calculateEloDelta({
   userElo,
@@ -124,48 +157,32 @@ export function calculateEloDelta({
   projectedGain: number;
   projectedLoss: number;
 } {
-  // Expected score: how likely is this user to beat this event?
-  const expectedScore = 1 / (1 + Math.pow(10, (eventElo - userElo) / 400));
+  // Damped rating: real skill still shifts the odds, just not as sharply.
+  const effectiveElo = 1200 + (userElo - 1200) * RATING_DAMPEN;
+  const expectedScore = 1 / (1 + Math.pow(10, (eventElo - effectiveElo) / 400));
 
-  const actualScore = outcome === 'win' ? 1 : 0;
-
-  // Base Elo change (before multipliers)
-  const baseEloDelta = kFactor * (actualScore - expectedScore);
-
-  // Apply confidence and spread multipliers
   const confMult   = CONFIDENCE_MULTIPLIERS[confidenceLevel];
   const spreadMult = getSpreadMultiplier(betType);
+  const stake      = kFactor * confMult * spreadMult;
+  const bonus      = kFactor * PARTICIPATION_BONUS;
 
-  // Push = no action (stake returned), matching sportsbook convention.
-  // Scoring it as 0.5 would penalize favorite picks on a tie.
-  const finalEloDelta = outcome === 'push'
-    ? 0
-    : Math.round(baseEloDelta * confMult * spreadMult);
-
-  // Rating floor. Chess convention — a floor well beneath any competitive
-  // rating, so hitting it means something has gone very wrong rather than
-  // being a place to farm from. (Elo is self-correcting anyway: climbing back
-  // raises expectedScore, which shrinks gains automatically.) 0 was a worse
-  // floor because it let a user sit at literal zero with nothing to lose.
-  const newElo = Math.max(ELO_FLOOR, userElo + finalEloDelta);
-
-  // Pre-pick projections (shown to user before they confirm).
-  // These mirror finalEloDelta exactly: a win pays +projectedGain, a loss
-  // costs −projectedLoss. The loss is capped by the distance to the floor so
-  // the UI can never advertise a risk larger than the user can actually take.
-  const projectedGain = Math.round(
-    kFactor * (1 - expectedScore) * confMult * spreadMult
-  );
+  const projectedGain = Math.max(1, Math.round(stake * (1 - expectedScore) + bonus));
   const projectedLoss = Math.min(
-    Math.round(kFactor * expectedScore * confMult * spreadMult),
+    Math.max(MIN_LOSS, Math.round(stake * expectedScore - bonus)),
     Math.max(0, userElo - ELO_FLOOR),
   );
 
-  return {
-    expectedScore,
-    finalEloDelta,
-    newElo,
-    projectedGain,
-    projectedLoss,
-  };
+  // Derived from the same two numbers the user was shown, so what the board
+  // promised and what settlement pays can never drift apart.
+  // Push = no action (stake returned), matching sportsbook convention.
+  const finalEloDelta =
+    outcome === 'push' ? 0 :
+    outcome === 'win'  ? projectedGain : -projectedLoss;
+
+  // Rating floor. Chess convention — a floor well beneath any competitive
+  // rating, so hitting it means something has gone very wrong rather than
+  // being a place to farm from.
+  const newElo = Math.max(ELO_FLOOR, userElo + finalEloDelta);
+
+  return { expectedScore, finalEloDelta, newElo, projectedGain, projectedLoss };
 }

@@ -10,8 +10,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { hapticImpact } from '@/lib/haptics';
 
-const CLOSE_DISTANCE_PX = 110;   // far enough down → close
-const CLOSE_VELOCITY    = 0.5;   // px/ms flick → close regardless of distance
+// Tuned down from 110px / 0.5. The sheet was genuinely hard to dismiss: you
+// had to find a 15px handle AND drag a third of the screen. 72px is still
+// well clear of an accidental brush, and a gentler flick threshold means a
+// quick downward swipe works without having to be fast about it.
+const CLOSE_DISTANCE_PX = 72;
+const CLOSE_VELOCITY    = 0.3;
 
 export function useDragDismiss(onClose: () => void) {
   const [dragY, setDragY] = useState(0);
@@ -40,8 +44,9 @@ export function useDragDismiss(onClose: () => void) {
     if (!active.current) return;
     const dy = e.clientY - startY.current;
     if (dy < 0) { setDragY(0); return; }    // never drag above its resting place
-    // Slight resistance so it feels attached rather than loose.
-    setDragY(dy < 0 ? 0 : dy * 0.9);
+    // 1:1 with the finger. The old 0.9 damping meant the sheet always lagged
+    // slightly behind the touch, which reads as unresponsive at small drags.
+    setDragY(dy);
   }, []);
 
   const end = useCallback((e: React.PointerEvent) => {

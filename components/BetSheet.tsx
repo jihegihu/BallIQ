@@ -35,15 +35,23 @@ export default function BetSheet({ match, onClose }: { match: Match; onClose: ()
         style={sheetStyle}
         className="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-x border-rim rounded-t-3xl max-h-[88dvh] flex flex-col animate-[sheetUp_.28s_cubic-bezier(0.32,0.72,0,1)]"
       >
-        {/* Grab handle — drag surface */}
+        {/* Grab handle. The hit area is deliberately much taller than the bar
+            it draws — the bar is a 4px visual cue, but a finger needs
+            somewhere around 36px to land on reliably. */}
         <div
           {...dragHandlers}
-          className="pt-2.5 pb-1 flex justify-center shrink-0 cursor-grab active:cursor-grabbing touch-none"
+          className="pt-3 pb-2.5 flex justify-center shrink-0 cursor-grab active:cursor-grabbing touch-none"
         >
-          <div className="w-9 h-1 rounded-full bg-rim" />
+          <div className="w-10 h-1 rounded-full bg-rim" />
         </div>
 
+        {/* The body is draggable too, which is what actually makes this feel
+            like an iOS sheet: anywhere in the sheet pulls it down, as long as
+            the content is already scrolled to the top (the hook checks).
+            No touch-none here — the browser keeps ownership of scrolling and
+            cancels the drag the moment a real scroll starts. */}
         <div
+          {...dragHandlers}
           ref={scrollRef as React.Ref<HTMLDivElement>}
           className="overflow-y-auto overscroll-contain px-4 pt-2"
           style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}

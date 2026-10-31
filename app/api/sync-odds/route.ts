@@ -146,24 +146,37 @@ async function runSync(fullSweep = false) {
   // A sport earns its request if it has a game inside DISCOVERY_WINDOW_DAYS.
   // This self-heals: skipping a league does not delete its existing fixtures,
   // so as time passes a game 10 days out becomes 3 days out and the league
-  // comes back on its own.
+  // returns on its own.
   //
-  // The exception is a season starting from an empty table — nothing in the DB
-  // means nothing to detect. A full sweep (?full=1, which the daily Vercel
-  // cron uses) queries every sport and picks up newly published schedules.
+  // Dormant leagues still need re-checking, or a new season starting from an
+  // empty table would never be discovered. Rather than depend on a separate
+  // daily "full sweep" cron, any sport whose newest row is more than
+  // STALE_RECHECK_HOURS old is folded back in. Discovery therefore happens
+  // automatically on whichever run crosses that line, roughly once a day per
+  // dormant sport, for 3 credits each — and the schedule can be driven by a
+  // single external cron with no second job to keep in sync.
   const DISCOVERY_WINDOW_DAYS = 10;
+  const STALE_RECHECK_HOURS   = 24;
   let sportsQueried: string[] = [...ALL_SPORTS];
 
   if (!fullSweep) {
-    const horizon = new Date(Date.now() + DISCOVERY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const { data: upcomingRows } = await admin
-      .from('matches')
-      .select('sport')
-      .gte('commence_time', new Date().toISOString())
-      .lte('commence_time', horizon);
+    const now     = new Date();
+    const horizon = new Date(now.getTime() + DISCOVERY_WINDOW_DAYS * 86_400_000).toISOString();
+    const staleBefore = new Date(now.getTime() - STALE_RECHECK_HOURS * 3_600_000).toISOString();
 
-    const active = new Set((upcomingRows ?? []).map((r) => r.sport as string));
-    const lean = ALL_SPORTS.filter((s) => active.has(s));
+    const [{ data: upcomingRows }, { data: freshRows }] = await Promise.all([
+      admin.from('matches').select('sport')
+        .gte('commence_time', now.toISOString())
+        .lte('commence_time', horizon),
+      // Sports touched recently enough that they do not need a re-check.
+      admin.from('matches').select('sport')
+        .gte('synced_at', staleBefore),
+    ]);
+
+    const hasUpcoming  = new Set((upcomingRows ?? []).map((r) => r.sport as string));
+    const checkedLately = new Set((freshRows ?? []).map((r) => r.sport as string));
+
+    const lean = ALL_SPORTS.filter((sp) => hasUpcoming.has(sp) || !checkedLately.has(sp));
     // If the table tells us nothing, fall back to everything rather than
     // silently syncing zero sports.
     if (lean.length > 0) sportsQueried = lean;
