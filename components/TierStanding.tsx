@@ -38,7 +38,15 @@ export default function TierStanding({ standing }: { standing: Standing | null }
     );
   }
 
-  const { myElo, percentile, rank, totalRated } = standing;
+  const { myElo, rank, totalRated } = standing;
+
+  // "Top N%" rather than "ahead of N%" — it is how people already talk about
+  // standing, and it stays true as the player base grows: rank 1 of 8 really
+  // is the top 13%, and the same rank becomes "Top 1%" once there are a few
+  // hundred players. Rounded up so being first never reads as "Top 0%".
+  const topPercent = rank !== null && totalRated > 0
+    ? Math.max(1, Math.ceil((rank / totalRated) * 100))
+    : null;
   const myTier = tierFor(myElo).label;
   const next   = nextTierProgress(myElo);
   const myIdx  = TIERS.findIndex((t) => t.label === myTier);   // 0 = top rung
@@ -127,9 +135,9 @@ export default function TierStanding({ standing }: { standing: Standing | null }
             Rank <span className="font-black text-ink tabular-nums">{rank}</span>
             <span className="tabular-nums"> of {totalRated}</span>
           </p>
-          {percentile !== null && (
+          {topPercent !== null && (
             <p className="text-xs text-dim">
-              ahead of <span className="font-black text-ink tabular-nums">{percentile}%</span> of players
+              top <span className="font-black text-ink tabular-nums">{topPercent}%</span> of players
             </p>
           )}
         </div>
