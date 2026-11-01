@@ -1,18 +1,19 @@
 'use client';
 
-// Where you sit on the whole ladder.
+// Your climb up the ladder.
 //
-// The leaderboard only ever shows the top 50, so anyone outside it had no way
-// to tell whether they were near the top or the bottom. That is the thing that
-// makes a ladder motivating, so this shows the full climb: every tier, how many
-// players are in each, where you are, and exactly what the next rung costs.
+// The first version was a histogram: every row carried a tier name, an Elo
+// range, a population count, a bar whose width encoded that count, AND an
+// opacity that encoded it again. Three encodings of one fact plus two numbers
+// nobody asked for, so it read as decoration.
 //
-// Deliberately not a stat tile. The shape of the population is the content —
-// seeing a crowd below you and thin air above is what makes the next tier feel
-// worth reaching.
+// This is a path instead. One mark per tier showing only whether you have
+// passed it, are standing on it, or have yet to reach it. Numbers appear
+// exactly three times: your rating, the gap to the next rung, and where you
+// sit among other players.
 
 import { useThemeStore } from '@/lib/themeStore';
-import { tierStyle, tierFor, nextTierProgress } from '@/lib/tiers';
+import { tierStyle, tierFor, nextTierProgress, TIERS } from '@/lib/tiers';
 import Icon from '@/components/Icon';
 
 export type Standing = {
@@ -26,101 +27,104 @@ export type Standing = {
 
 export default function TierStanding({ standing }: { standing: Standing | null }) {
   const theme = useThemeStore((s) => s.theme);
-  if (!standing || standing.myElo == null) return null;
 
-  const { myElo, percentile, ahead, totalRated, distribution } = standing;
+  if (!standing || standing.myElo == null) {
+    return (
+      <p className="text-center text-sm text-dim py-10">
+        Make a pick to take your place on the ladder.
+      </p>
+    );
+  }
+
+  const { myElo, percentile, ahead, totalRated } = standing;
   const myTier = tierFor(myElo).label;
   const next   = nextTierProgress(myElo);
-  const peak   = Math.max(1, ...distribution.map((d) => d.count));
+  const myIdx  = TIERS.findIndex((t) => t.label === myTier);   // 0 = top rung
 
   return (
-    <section className="bg-card border border-rim rounded-2xl px-3.5 py-3 mb-4 elev-1">
-      <div className="flex items-baseline justify-between mb-2.5">
-        <h2 className="text-xs font-black text-ink uppercase tracking-widest">Your climb</h2>
-        {percentile !== null && totalRated > 1 && (
-          <p className="text-xs text-dim">
-            {/* A percentage of eight people is noise; name the real number
-                until the base is large enough for a percentage to mean
-                something. */}
-            ahead of{' '}
-            <span className="font-black text-ink tabular-nums">
-              {totalRated >= 25 ? `${percentile}%` : ahead}
-            </span>{' '}
-            of {totalRated - 1} other{totalRated - 1 === 1 ? '' : 's'}
-          </p>
-        )}
-      </div>
-
-      {/* The ladder, highest rung first — so climbing reads as moving up. */}
-      <div className="flex flex-col-reverse gap-px">
-        {distribution.map((d) => {
-          const here  = d.label === myTier;
-          const below = myElo >= d.min;             // rungs already climbed
-          const color = tierStyle(d.min, theme).color;
-          const width = Math.max(d.count > 0 ? 6 : 0, (d.count / peak) * 100);
+    <section className="bg-card border border-rim rounded-2xl px-4 py-3.5 elev-1">
+      {/* Rungs run top-down from the highest, so the climb reads upward. */}
+      <ol className="relative">
+        {TIERS.map((t, i) => {
+          const here    = i === myIdx;
+          const reached = i > myIdx;            // lower index = higher tier
+          const isNext  = i === myIdx - 1;
+          const color   = tierStyle(t.min, theme).color;
+          const last    = i === TIERS.length - 1;
 
           return (
-            <div
-              key={d.label}
-              className={`relative flex items-center gap-2 rounded-lg px-2 py-1 ${here ? 'bg-layer' : ''}`}
-            >
-              {/* Population bar, behind the text — the shape IS the information. */}
-              <div
-                aria-hidden
-                className="absolute inset-y-0 left-0 rounded-lg pointer-events-none"
-                style={{
-                  width: `${width}%`,
-                  background: color,
-                  opacity: here ? 0.26 : below ? 0.14 : 0.07,
-                }}
-              />
+            <li key={t.label} className="relative flex items-center gap-3 h-9">
+              {/* The rail connecting the rungs. */}
+              {!last && (
+                <span
+                  aria-hidden
+                  className="absolute left-[7px] top-[18px] bottom-[-18px] w-px"
+                  style={{ background: reached || here ? color : 'var(--c-rim)', opacity: reached || here ? 0.45 : 1 }}
+                />
+              )}
 
-              <span className="relative w-3.5 shrink-0">
-                {here && <Icon name="diamond" size={11} style={{ color }} />}
+              {/* One mark, three states: climbed, standing, still above you. */}
+              <span className="relative z-10 w-4 flex justify-center shrink-0">
+                {here ? (
+                  <Icon name="diamond" size={15} style={{ color }} />
+                ) : (
+                  <span
+                    className="block w-2 h-2 rounded-full"
+                    style={
+                      reached
+                        ? { background: color, opacity: 0.75 }
+                        : { border: '1.5px solid var(--c-rim)' }
+                    }
+                  />
+                )}
               </span>
 
               <span
-                className={`relative flex-1 min-w-0 truncate text-xs ${here ? 'font-black' : 'font-bold'}`}
+                className={`flex-1 min-w-0 truncate ${here ? 'text-sm font-black' : 'text-sm font-bold'}`}
                 style={{ color: here ? color : undefined }}
               >
-                <span className={here ? '' : below ? 'text-sub' : 'text-dim'}>{d.label}</span>
+                <span className={here ? '' : reached ? 'text-sub' : 'text-dim'}>{t.label}</span>
+                {here && (
+                  <span className="ml-2 text-xs font-bold text-dim tabular-nums">
+                    {myElo.toLocaleString()}
+                  </span>
+                )}
               </span>
 
-              <span className="relative text-xs text-dim tabular-nums shrink-0">
-                {d.min.toLocaleString()}
-                {d.max !== null ? `–${d.max.toLocaleString()}` : '+'}
-              </span>
-
-              <span className={`relative w-7 text-right text-xs tabular-nums shrink-0 ${here ? 'text-ink font-black' : 'text-dim'}`}>
-                {d.count || '—'}
-              </span>
-            </div>
+              {here && <span className="text-xs font-black uppercase tracking-widest" style={{ color }}>you</span>}
+              {isNext && next && (
+                <span className="text-xs text-dim tabular-nums">
+                  <span className="font-black text-ink">{next.toGo}</span> to go
+                </span>
+              )}
+            </li>
           );
         })}
-      </div>
+      </ol>
 
-      {/* The ask: one number, and what it buys. */}
-      {next ? (
-        <div className="mt-2.5 pt-2.5 border-t border-rim">
-          <div className="flex items-baseline justify-between mb-1.5">
-            <p className="text-xs text-sub">
-              <span className="font-black text-ink tabular-nums">{next.toGo}</span> Elo to{' '}
-              <span className="font-black" style={{ color: tierStyle(next.toGo + myElo, theme).color }}>
-                {next.label}
-              </span>
-            </p>
-            <p className="text-xs text-dim tabular-nums">{next.percent}%</p>
-          </div>
+      {next && (
+        <div className="mt-3 pt-3 border-t border-rim">
           <div className="h-1.5 bg-layer rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-[width] duration-500"
               style={{ width: `${next.percent}%`, background: tierStyle(myElo, theme).color }}
             />
           </div>
+          <p className="text-xs text-dim mt-1.5">
+            {next.percent}% of the way to {next.label}
+          </p>
         </div>
-      ) : (
-        <p className="mt-2.5 pt-2.5 border-t border-rim text-xs text-sub">
-          Top of the ladder — nothing above but holding it.
+      )}
+
+      {totalRated > 1 && (
+        <p className="text-xs text-dim mt-3 pt-3 border-t border-rim">
+          {/* A percentage of eight people is noise; name the real number until
+              the base is big enough for a percentage to mean something. */}
+          Ahead of{' '}
+          <span className="font-black text-ink tabular-nums">
+            {totalRated >= 25 ? `${percentile}%` : ahead}
+          </span>{' '}
+          of {totalRated - 1} other player{totalRated - 1 === 1 ? '' : 's'}
         </p>
       )}
     </section>

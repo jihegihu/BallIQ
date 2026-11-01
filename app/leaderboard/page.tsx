@@ -6,6 +6,10 @@ import Icon, { type IconName } from '@/components/Icon';
 import TierStanding, { type Standing } from '@/components/TierStanding';
 
 type Scope = 'global' | 'friends';
+/** What the page is showing. 'climb' is a view, not a server scope: the API
+ *  only understands global/friends, and the climb reads from the standing
+ *  block that the global query already returns. */
+type View = Scope | 'climb';
 type SportTab = 'global' | 'nba' | 'nfl' | 'mlb' | 'soccer' | 'tennis';
 type LeaderRow = {
   id: string;
@@ -54,7 +58,9 @@ function rankLabel(elo: number): string {
 }
 
 export default function LeaderboardPage() {
-  const [scope, setScope]     = useState<Scope>('global');
+  const [view, setView]       = useState<View>('global');
+  // The climb is computed from the global standing, so it fetches as global.
+  const scope: Scope          = view === 'climb' ? 'global' : view;
   const [sport, setSport]     = useState<SportTab>('global');
   const refreshNonce          = useUserStore((s) => s.refreshNonce);
   const [rows, setRows]       = useState<LeaderRow[]>([]);
@@ -130,20 +136,14 @@ export default function LeaderboardPage() {
       <div className="mb-4">
       </div>
 
-      {/* Where you sit on the whole ladder, shown before the board: "how am I
-          doing" is the question people open this page with, and the top-50
-          board cannot answer it for anyone outside the top 50. Global scope
-          only — a friends-only distribution would be meaningless. */}
-      {scope === 'global' && sport === 'global' && <TierStanding standing={standing} />}
-
-      {/* Global / Friends scope toggle */}
+      {/* Global / Friends / Climb */}
       <div className="flex bg-card border border-rim rounded-xl p-1 gap-1 mb-4">
-        {([['global', 'globe', 'Global'], ['friends', 'users', 'Friends']] as [Scope, IconName, string][]).map(([key, icon, label]) => (
+        {([['global', 'globe', 'Global'], ['friends', 'users', 'Friends'], ['climb', 'trendUp', 'My Climb']] as [View, IconName, string][]).map(([key, icon, label]) => (
           <button
             key={key}
-            onClick={() => { setScope(key); setAddMsg(''); }}
+            onClick={() => { setView(key); setAddMsg(''); }}
             className={`flex-1 py-2 rounded-lg text-xs font-black transition ${
-              scope === key ? 'bg-violet-600 text-white' : 'text-dim hover:text-sub'
+              view === key ? 'bg-violet-600 text-white' : 'text-dim hover:text-sub'
             }`}
           >
             <span className="inline-flex items-center justify-center gap-1.5">
@@ -153,8 +153,12 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
+      {/* The climb replaces the board entirely — it answers a different
+          question, and stacking both made the page a wall of numbers. */}
+      {view === 'climb' && <TierStanding standing={standing} />}
+
       {/* Add-friend form (friends scope) */}
-      {scope === 'friends' && (
+      {view !== 'climb' && scope === 'friends' && (
         <form onSubmit={handleAdd} className="mb-4">
           <div className="flex gap-2">
             <input
@@ -179,7 +183,7 @@ export default function LeaderboardPage() {
       )}
 
       {/* Not on the board yet — hook to make a first pick */}
-      {!loading && !error && myRank === 0 && totalPicks === 0 && scope === 'global' && (
+      {view !== 'climb' && !loading && !error && myRank === 0 && totalPicks === 0 && scope === 'global' && (
         <a
           href="/"
           className="mb-4 flex items-center gap-3 bg-accent/5 border border-accent/20 rounded-xl px-4 py-3 hover:border-accent/40 transition"
@@ -194,7 +198,7 @@ export default function LeaderboardPage() {
       )}
 
       {/* Your rank banner */}
-      {myRank > 0 && (
+      {view !== 'climb' && myRank > 0 && (
         <div className="mb-4 bg-accent/5 border border-accent/20 rounded-xl px-4 py-2.5 flex items-center justify-between">
           <div>
             <p className="text-[10px] text-dim uppercase tracking-widest">Your Rank</p>
@@ -209,7 +213,9 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Sport tabs */}
+      {/* Sport tabs — hidden on the climb, which is global-rating only and
+          would otherwise show a filter that does nothing. */}
+      {view !== 'climb' && (
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-0.5 -mx-4 px-4">
         {TABS.map(({ key, label }) => (
           <button
@@ -225,9 +231,10 @@ export default function LeaderboardPage() {
           </button>
         ))}
       </div>
+      )}
 
       {/* Loading */}
-      {loading && (
+      {view !== 'climb' && loading && (
         <div className="flex flex-col gap-2">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="h-14 bg-card border border-rim rounded-xl animate-pulse" />
@@ -244,7 +251,7 @@ export default function LeaderboardPage() {
       )}
 
       {/* Empty */}
-      {!loading && !error && rows.length === 0 && (
+      {view !== 'climb' && !loading && !error && rows.length === 0 && (
         <div className="text-center py-16">
           <Icon name={scope === 'friends' ? 'users' : 'trophy'} size={40} strokeWidth={1.25} className="mx-auto mb-3 text-dim" />
           <p className="font-bold text-ink mb-1">
@@ -259,7 +266,7 @@ export default function LeaderboardPage() {
       )}
 
       {/* Rows */}
-      {!loading && !error && rows.length > 0 && (
+      {view !== 'climb' && !loading && !error && rows.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {rows.map((row, idx) => {
             const elo  = row[ELO_KEY[sport]] as number;
@@ -331,7 +338,7 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {rows.length > 0 && (
+      {view !== 'climb' && rows.length > 0 && (
         <p className="text-center text-[10px] text-dim mt-5">
           Updates after each game settles
         </p>
