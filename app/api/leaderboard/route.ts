@@ -124,16 +124,20 @@ export async function GET(req: NextRequest) {
   // the kind of thing people notice.
   let percentile: number | null = null;
   let ahead = 0;
+  let rank: number | null = null;
   if (myElo != null && elos.length > 1) {
     const others = [...elos];
     others.splice(others.indexOf(myElo), 1);   // drop one instance of me
     ahead = others.filter((e) => e < myElo).length;
     percentile = Math.round((ahead / others.length) * 100);
+    // Standard competition rank: everyone strictly above you, plus one. Ties
+    // therefore share a rank rather than being ordered arbitrarily.
+    rank = elos.filter((e) => e > myElo).length + 1;
   }
 
   return NextResponse.json({
     users, sport, column, scope,
     myId: myId ?? null,
-    standing: { myElo: myElo ?? null, percentile, ahead, totalRated: elos.length, distribution },
+    standing: { myElo: myElo ?? null, percentile, ahead, rank, totalRated: elos.length, distribution },
   });
 }

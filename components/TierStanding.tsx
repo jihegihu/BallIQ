@@ -21,6 +21,8 @@ export type Standing = {
   percentile: number | null;
   /** How many other players are below this user. */
   ahead: number;
+  /** Competition rank: everyone strictly above, plus one. Ties share a rank. */
+  rank: number | null;
   totalRated: number;
   distribution: { label: string; min: number; max: number | null; count: number }[];
 };
@@ -36,7 +38,7 @@ export default function TierStanding({ standing }: { standing: Standing | null }
     );
   }
 
-  const { myElo, percentile, ahead, totalRated } = standing;
+  const { myElo, percentile, rank, totalRated } = standing;
   const myTier = tierFor(myElo).label;
   const next   = nextTierProgress(myElo);
   const myIdx  = TIERS.findIndex((t) => t.label === myTier);   // 0 = top rung
@@ -91,12 +93,18 @@ export default function TierStanding({ standing }: { standing: Standing | null }
                 )}
               </span>
 
-              {here && <span className="text-xs font-black uppercase tracking-widest" style={{ color }}>you</span>}
               {isNext && next && (
                 <span className="text-xs text-dim tabular-nums">
                   <span className="font-black text-ink">{next.toGo}</span> to go
                 </span>
               )}
+
+              {/* Where the rung begins. The row above gives its ceiling, so a
+                  range would be two numbers saying one thing. */}
+              <span className={`w-12 text-right text-xs tabular-nums shrink-0 ${here ? 'font-black' : 'text-dim'}`}
+                    style={here ? { color } : undefined}>
+                {t.min.toLocaleString()}
+              </span>
             </li>
           );
         })}
@@ -110,22 +118,21 @@ export default function TierStanding({ standing }: { standing: Standing | null }
               style={{ width: `${next.percent}%`, background: tierStyle(myElo, theme).color }}
             />
           </div>
-          <p className="text-xs text-dim mt-1.5">
-            {next.percent}% of the way to {next.label}
-          </p>
         </div>
       )}
 
-      {totalRated > 1 && (
-        <p className="text-xs text-dim mt-3 pt-3 border-t border-rim">
-          {/* A percentage of eight people is noise; name the real number until
-              the base is big enough for a percentage to mean something. */}
-          Ahead of{' '}
-          <span className="font-black text-ink tabular-nums">
-            {totalRated >= 25 ? `${percentile}%` : ahead}
-          </span>{' '}
-          of {totalRated - 1} other player{totalRated - 1 === 1 ? '' : 's'}
-        </p>
+      {totalRated > 1 && rank !== null && (
+        <div className="flex items-baseline justify-between mt-3 pt-3 border-t border-rim">
+          <p className="text-xs text-dim">
+            Rank <span className="font-black text-ink tabular-nums">{rank}</span>
+            <span className="tabular-nums"> of {totalRated}</span>
+          </p>
+          {percentile !== null && (
+            <p className="text-xs text-dim">
+              ahead of <span className="font-black text-ink tabular-nums">{percentile}%</span> of players
+            </p>
+          )}
+        </div>
       )}
     </section>
   );
