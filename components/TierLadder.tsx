@@ -30,7 +30,7 @@ export default function TierLadder() {
           </div>
         );
       })}
-      <p className="text-center text-[10px] text-accent font-bold mt-1">You start at Advanced · 1,200</p>
+      <p className="text-center text-[10px] text-accent font-bold mt-1">You start at Contender · 1,200</p>
       <p className="text-center text-[11px] text-dim pt-1.5">
         Tap a team to pick. Your rating updates automatically when games end.
       </p>

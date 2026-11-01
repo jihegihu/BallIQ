@@ -18,18 +18,27 @@ export type Tier = {
 
 // Ordered high → low so a simple find() picks the right tier.
 //
-// Bands are deliberately TIGHT — roughly 150–250 Elo apart rather than the
-// 400 they used to be. Everyone starts at 1200, and with K between 20 and 64
-// a 400-point climb is a season-long grind: the next-tier bar sat near-empty
-// for weeks, which reads as "I am getting nowhere" rather than "I am climbing".
-// Legend is open-ended on top so strong players still have something to chase.
+// Everyone starts at 1200, and the band that 1200 lands in is the ENTRY tier.
+// That band used to be called "Advanced", which meant a brand-new account was
+// labelled Advanced before making a single pick — unearned, and it left two of
+// the six tiers reachable only by getting worse. "Contender" says what a new
+// user actually is, and Advanced / Expert / Elite now sit above the start
+// where they have to be climbed to.
+//
+// Bands stay tight (150–250 Elo) so the next-tier bar moves visibly; the
+// participation bonus in lib/elo.ts levels a market-rate picker out near 1375,
+// which is early Advanced — so Expert and Elite mean genuinely beating the
+// market, not just playing a lot.
+//
+// Colour runs cool → warm with the brand violet at the start: below it reads
+// as cooled off, above it as heating up.
 export const TIERS: Tier[] = [
-  { label: 'Legend',       min: 1800, hex: '#F43F5E' },  // rose-500
-  { label: 'Elite',        min: 1550, hex: '#EF4444' },  // red-500
-  { label: 'Expert',       min: 1350, hex: '#F97316' },  // orange-500
-  { label: 'Advanced',     min: 1150, hex: '#A78BFA' },  // violet-400 — the 1200 start lands here
-  { label: 'Intermediate', min: 1000, hex: '#EAB308' },  // yellow-500
-  { label: 'Rookie',       min: 0,    hex: '#64748B' },  // slate-500
+  { label: 'Elite',     min: 1800, hex: '#EF4444' },  // red-500
+  { label: 'Expert',    min: 1550, hex: '#F97316' },  // orange-500
+  { label: 'Advanced',  min: 1350, hex: '#FBBF24' },  // amber-400
+  { label: 'Contender', min: 1150, hex: '#A78BFA' },  // violet-400 — the 1200 start
+  { label: 'Prospect',  min: 1000, hex: '#38BDF8' },  // sky-400
+  { label: 'Rookie',    min: 0,    hex: '#64748B' },  // slate-500
 ];
 
 /** Human-readable range, e.g. "1600–2000" or "2000+". */

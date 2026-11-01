@@ -83,6 +83,21 @@ export async function GET() {
   const picks = pickRows.map((row) => rowToUserPick(row, matchMap.get(row.match_id as string) ?? null));
   const user  = userResult.data ?? null;
 
+  // users.total_picks is a hand-maintained counter (+1 on POST, -1 on DELETE),
+  // so it drifts from reality the moment any write path misses — a retry, a
+  // failed delete, a direct DB edit. One account was showing 60 against 61
+  // actual rows, which is what makes the Account screen's totals not add up.
+  //
+  // The rows are already in hand here, so the count is free and cannot drift.
+  // Cancelled picks are excluded: those were withdrawn, not made.
+  const actualPicks = pickRows.filter((r) => r.outcome !== 'cancelled').length;
+
+  // Heal the stored column when it has drifted, so the server-side K-factor
+  // (which reads it) converges too rather than staying permanently wrong.
+  if (user && (user.total_picks as number) !== actualPicks) {
+    await admin.from('users').update({ total_picks: actualPicks }).eq('id', userId);
+  }
+
   return NextResponse.json({
     picks,
     user: user ? {
@@ -102,7 +117,7 @@ export async function GET() {
         TENNIS:     (user as any).tennis_elo ?? 1200,
       },
       xpTotal:       user.xp_total,
-      totalPicks:    user.total_picks,
+      totalPicks:    actualPicks,
       weeksActive:   user.weeks_active,
       lastPickDate:  user.last_pick_date,
       currentStreak: user.current_streak,
@@ -223,9 +238,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ saved: false, reason: error.message });
   }
 
+  // Count rather than increment: incrementing a counter that is already wrong
+  // keeps it wrong forever.
+  const { count: liveCount } = await admin
+    .from('user_picks')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .neq('outcome', 'cancelled');
+
   await admin.from('users').update({
     xp_total:       (u.xp_total ?? 0) + xpEarned,
-    total_picks:    (u.total_picks ?? 0) + 1,
+    total_picks:    liveCount ?? ((u.total_picks ?? 0) + 1),
     last_pick_date: today,
     current_streak: projectedStreak,
     weeks_active:   weeksActive,
@@ -283,9 +306,15 @@ export async function DELETE(req: Request) {
     .single();
 
   if (cur) {
+    const { count: liveCount } = await admin
+      .from('user_picks')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .neq('outcome', 'cancelled');
+
     await admin.from('users').update({
       xp_total:    Math.max(0, (cur.xp_total ?? 0) - (pick.xp_earned ?? 0)),
-      total_picks: Math.max(0, (cur.total_picks ?? 0) - 1),
+      total_picks: liveCount ?? Math.max(0, (cur.total_picks ?? 0) - 1),
     }).eq('id', userId);
   }
 
