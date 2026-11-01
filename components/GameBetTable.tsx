@@ -9,6 +9,7 @@ import { hapticImpact } from '@/lib/haptics';
 import { Match } from '@/types';
 import MatchHeader from '@/components/MatchHeader';
 import BetPanel from '@/components/BetPanel';
+import Icon from '@/components/Icon';
 
 export default function GameBetTable({ match }: { match: Match }) {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function GameBetTable({ match }: { match: Match }) {
         onClick={() => { hapticImpact('light'); router.back(); }}
         className="flex items-center gap-1 text-sub hover:text-ink text-sm font-bold mb-4 transition active:scale-95"
       >
-        <span className="text-base leading-none">‹</span> Back
+        <Icon name="chevronLeft" size={16} /> Back
       </button>
 
       {/* Hero */}

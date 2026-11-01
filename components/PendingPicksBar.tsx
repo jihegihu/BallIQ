@@ -1,10 +1,10 @@
 'use client';
-
 // Sticky summary of tonight's action — sits just above the bottom nav on the
 // games page and links to the Picks tab.
 
 import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
+import Icon from '@/components/Icon';
 
 export default function PendingPicksBar() {
   const picks   = useUserStore((s) => s.user.picks);
@@ -29,7 +29,7 @@ export default function PendingPicksBar() {
         </span>
         <span className="text-xs font-bold text-dim">
           potential <span className="text-good font-black">+{potential} Elo</span>
-          <span className="text-accent ml-2">›</span>
+          <Icon name="chevronRight" size={15} className="text-accent ml-2" />
         </span>
       </Link>
     </div>

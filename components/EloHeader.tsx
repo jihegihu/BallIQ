@@ -1,5 +1,4 @@
 'use client';
-
 // Fixed top banner: BallIQ wordmark on the left (moved here off the games
 // screen, which frees that space for the board itself), live rating pill on
 // the right. Tapping the pill opens the rating sheet.
@@ -9,6 +8,7 @@ import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
 import { hapticImpact } from '@/lib/haptics';
 import EloSheet from '@/components/EloSheet';
+import Icon from '@/components/Icon';
 
 export default function EloHeader() {
   const [open, setOpen] = useState(false);
@@ -35,14 +35,14 @@ export default function EloHeader() {
             onClick={() => { hapticImpact('light'); setOpen(true); }}
             className="flex items-center gap-1.5 bg-card border border-rim rounded-full px-3 py-1.5 hover:border-accent/40 transition-all active:scale-95"
           >
-            <span className="text-accent text-[9px]">◆</span>
+            <Icon name="diamond" size={10} className="text-accent" />
             <span className="text-ink font-black text-sm tabular-nums">
               {user.globalElo.toLocaleString()}
             </span>
             <span className="text-dim text-[10px]">ELO</span>
             {user.currentStreak > 0 && (
               <span className="text-[10px] font-bold text-orange-400 ml-0.5">
-                {user.currentStreak}🔥
+                {user.currentStreak}<Icon name="flame" size={12} className="ml-0.5 -mt-px" />
               </span>
             )}
           </button>

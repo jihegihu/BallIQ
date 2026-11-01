@@ -33,7 +33,7 @@ export default function BetSheet({ match, onClose }: { match: Match; onClose: ()
       {/* Sheet */}
       <div
         style={sheetStyle}
-        className="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-x border-rim rounded-t-3xl max-h-[88dvh] flex flex-col animate-[sheetUp_.28s_cubic-bezier(0.32,0.72,0,1)]"
+        className="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-x border-rim rounded-t-3xl max-h-[88dvh] flex flex-col elev-3 animate-[sheetUp_.28s_cubic-bezier(0.32,0.72,0,1)]"
       >
         {/* Grab handle. The hit area is deliberately much taller than the bar
             it draws — the bar is a 4px visual cue, but a finger needs

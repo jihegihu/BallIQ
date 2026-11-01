@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Installed agent skills (apple-design, impeccable) — tooling, not project source
+.agents/
+.codex/
+.claude/skills/
+.claude/agents/
+skills-lock.json

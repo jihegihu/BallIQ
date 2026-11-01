@@ -13,6 +13,7 @@ import { useDragDismiss } from '@/lib/useDragDismiss';
 import { tierStyle, nextTierProgress } from '@/lib/tiers';
 import { summarizeRecord, isSettled } from '@/lib/record';
 import { useThemeStore } from '@/lib/themeStore';
+import Icon from '@/components/Icon';
 
 // Soccer leagues share a single rating column server-side, so EPL stands in
 // for all of them here.
@@ -76,7 +77,7 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
 
       <div
         style={sheetStyle}
-        className="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-x border-rim rounded-t-3xl max-h-[88dvh] flex flex-col animate-[sheetUp_.28s_cubic-bezier(0.32,0.72,0,1)]"
+        className="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-x border-rim rounded-t-3xl max-h-[88dvh] flex flex-col elev-3 animate-[sheetUp_.28s_cubic-bezier(0.32,0.72,0,1)]"
       >
         {/* Drag surface */}
         <div {...dragHandlers} className="pt-3 pb-2.5 shrink-0 cursor-grab active:cursor-grabbing touch-none">
@@ -103,7 +104,9 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
               <p className="text-5xl font-black text-accent tabular-nums leading-none">
                 {user.globalElo.toLocaleString()}
               </p>
-              <p className="text-xs font-bold mt-1" style={{ color: eloRank.color }}>◆ {eloRank.label}</p>
+              <p className="text-xs font-bold mt-1 flex items-center gap-1" style={{ color: eloRank.color }}>
+                <Icon name="diamond" size={11} />{eloRank.label}
+              </p>
             </div>
             <div className="text-right">
               <p className="text-[10px] text-dim uppercase tracking-widest mb-0.5">Record</p>
@@ -150,7 +153,9 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
           <div className="grid grid-cols-3 gap-2 mb-5">
             <div className="bg-layer rounded-xl p-3 text-center">
               <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">Streak</p>
-              <p className="text-sm font-black text-accent">{user.currentStreak > 0 ? `${user.currentStreak}🔥` : '—'}</p>
+              <p className="text-sm font-black text-accent">{user.currentStreak > 0
+                  ? <span className="inline-flex items-center gap-0.5">{user.currentStreak}<Icon name="flame" size={13} /></span>
+                  : '—'}</p>
             </div>
             <div className="bg-layer rounded-xl p-3 text-center">
               <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">Net Elo</p>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import TierLabel from '@/components/TierLabel';
 import { tierFor } from '@/lib/tiers';
 import { summarizeRecord } from '@/lib/record';
+import Icon from '@/components/Icon';
 
 
 
@@ -51,7 +52,7 @@ export default async function PublicProfilePage({
     <main className="min-h-screen pb-10 max-w-md mx-auto px-4 pt-6">
       {/* Back */}
       <Link href="/leaderboard" className="flex items-center gap-1 text-sub hover:text-ink text-sm mb-5 transition">
-        ‹ Rankings
+        <Icon name="chevronLeft" size={15} className="mr-1" />Rankings
       </Link>
 
       {/* Profile hero */}
@@ -95,7 +96,9 @@ export default async function PublicProfilePage({
         <div className="bg-card border border-rim rounded-xl p-3 text-center">
           <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Streak</p>
           <p className="text-xl font-black text-ink">
-            {(u.current_streak as number) > 0 ? `${u.current_streak}🔥` : '—'}
+            {(u.current_streak as number) > 0
+              ? <span className="inline-flex items-center gap-0.5">{u.current_streak as number}<Icon name="flame" size={12} /></span>
+              : '—'}
           </p>
         </div>
       </div>

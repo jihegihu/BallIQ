@@ -10,6 +10,7 @@ import { useUserStore } from '@/lib/userStore';
 import { UserPick } from '@/types';
 import Confetti from '@/components/Confetti';
 import { hapticSuccess, hapticImpact } from '@/lib/haptics';
+import Icon from '@/components/Icon';
 
 const LAST_SEEN_KEY = 'balliq-last-recap';
 
@@ -99,17 +100,23 @@ export default function RecapBanner() {
       />
 
       {/* Card */}
-      <div className="relative w-full max-w-sm bg-card border border-rim rounded-2xl p-6 pb-5 shadow-2xl text-center">
+      <div className="relative w-full max-w-sm bg-card border border-rim rounded-2xl p-6 pb-5 elev-3 text-center">
         <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">
           Your picks settled
         </p>
 
-        <p className="text-4xl mb-1">{up ? (recap.losses === 0 ? '🎯' : '📈') : '📉'}</p>
+        <Icon
+          name={up ? (recap.losses === 0 ? 'target' : 'trendUp') : 'trendDown'}
+          size={44}
+          strokeWidth={1.5}
+          className={`mx-auto mb-1 ${up ? 'text-good' : 'text-bad'}`}
+        />
         <h2 className="text-xl font-black text-ink">{headline}</h2>
 
         {/* Net Elo hero */}
         <p className={`text-5xl font-black tabular-nums leading-none mt-3 ${cls}`}>
-          {up ? '▲ +' : '▼ '}{Math.abs(recap.net)}
+          <Icon name={up ? 'trendUp' : 'trendDown'} size={28} className="mr-1.5 -mt-1" />
+          {up ? '+' : '−'}{Math.abs(recap.net)}
           <span className="text-base font-bold ml-1">Elo</span>
         </p>
 
@@ -124,7 +131,7 @@ export default function RecapBanner() {
         {/* Best-pick callout */}
         {recap.bestWin && (recap.bestWin.eloDelta ?? 0) > 0 && (
           <div className="mt-4 bg-layer rounded-xl px-3.5 py-2.5 text-left flex items-center gap-3">
-            <span className="text-lg">{recap.boldCall ? '🔮' : '✅'}</span>
+            <Icon name={recap.boldCall ? 'sparkle' : 'check'} size={18} className={recap.boldCall ? 'text-accent' : 'text-good'} />
             <div className="min-w-0">
               <p className="text-[10px] text-dim uppercase tracking-widest font-bold">
                 {recap.boldCall ? 'You called the upset' : 'Best pick'}
@@ -142,7 +149,8 @@ export default function RecapBanner() {
           className="w-full mt-5 py-3 rounded-xl text-sm font-black text-white transition active:scale-95"
           style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
         >
-          {up ? 'Keep climbing →' : 'Win it back →'}
+          {up ? 'Keep climbing' : 'Win it back'}
+          <Icon name="arrowRight" size={16} className="ml-1.5" />
         </button>
       </div>
     </div>

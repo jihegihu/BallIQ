@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import TierLadder from '@/components/TierLadder';
 import { useOnboardingStore } from '@/lib/onboardingStore';
+import Icon from '@/components/Icon';
 
 const SLIDES = [
   {
-    icon: '◆',
+    icon: 'diamond' as const,
     title: 'This Is Your Rating',
     subtitle: 'Like chess. No money — pure skill.',
     body: 'Pick winners of real games. Correct picks raise your rating; bold correct picks raise it more. Every game shows exactly what you stand to gain or risk:',
@@ -21,7 +22,7 @@ const SLIDES = [
             <div key={team} className={`flex flex-col items-center py-3 px-2 ${i === 1 ? 'border-l border-rim' : ''}`}>
               <p className="font-black text-xs text-ink">{team}</p>
               <p className="text-base font-black text-good tabular-nums mt-0.5">
-                ▲ +{gain}<span className="ml-0.5 text-[9px] font-bold">Elo</span>
+                <Icon name="trendUp" size={13} className="mr-0.5 -mt-0.5" />+{gain}<span className="ml-0.5 text-[9px] font-bold">Elo</span>
               </p>
               <p className="text-[9px] text-dim tabular-nums">
                 risk <span className="text-bad font-bold">−{risk}</span>
@@ -38,7 +39,7 @@ const SLIDES = [
     ),
   },
   {
-    icon: '🏆',
+    icon: 'trophy' as const,
     title: 'Climb the Tiers',
     subtitle: 'Everyone starts at 1,200 — the chess standard.',
     body: null,
@@ -87,7 +88,7 @@ export default function OnboardingModal() {
 
         {/* Icon */}
         <div className="flex justify-center mb-3">
-          <span className="text-4xl">{current.icon}</span>
+          <Icon name={current.icon} size={44} strokeWidth={1.5} className="text-accent" />
         </div>
 
         {/* Heading */}
@@ -126,7 +127,7 @@ export default function OnboardingModal() {
               onClick={() => setSlide((s) => s - 1)}
               className="flex-1 py-2.5 rounded-xl border border-rim text-sm font-bold text-sub hover:text-ink transition"
             >
-              ← Back
+              <Icon name="chevronLeft" size={15} className="mr-1" />Back
             </button>
           )}
           <button
@@ -134,7 +135,8 @@ export default function OnboardingModal() {
             className="flex-1 py-2.5 rounded-xl text-sm font-black text-white transition"
             style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
           >
-            {isLast ? "Let's Go →" : 'Next →'}
+            {isLast ? "Let's Go" : 'Next'}
+            <Icon name="arrowRight" size={15} className="ml-1.5" />
           </button>
         </div>
       </div>

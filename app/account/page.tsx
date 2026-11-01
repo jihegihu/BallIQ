@@ -7,6 +7,7 @@ import { useUser, useClerk } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
 import { useThemeStore } from '@/lib/themeStore';
 import { useOnboardingStore } from '@/lib/onboardingStore';
+import Icon from '@/components/Icon';
 
 function eloRankLabel(elo: number) {
   if (elo >= 2000) return 'Elite';
@@ -81,7 +82,7 @@ export default function AccountPage() {
           <p className="font-black text-ink text-base truncate">{username}</p>
           {email && <p className="text-[11px] text-dim truncate mt-0.5">{email}</p>}
           <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="text-accent text-[9px]">◆</span>
+            <Icon name="diamond" size={11} className="text-accent" />
             <span className="text-sm font-black text-accent tabular-nums">{user.globalElo.toLocaleString()}</span>
             <span className="text-dim text-[10px]">·</span>
             <span className="text-[10px] text-sub font-bold">{eloRankLabel(user.globalElo)}</span>
@@ -136,7 +137,9 @@ export default function AccountPage() {
                     : 'text-dim hover:text-sub'
                 }`}
               >
-                {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <Icon name={t === 'dark' ? 'moon' : 'sun'} size={14} />{t === 'dark' ? 'Dark' : 'Light'}
+                </span>
               </button>
             ))}
           </div>
@@ -153,7 +156,7 @@ export default function AccountPage() {
           onClick={openOnboarding}
           className="px-3 py-1.5 rounded-xl border border-rim text-xs font-black text-sub hover:border-accent/40 hover:text-accent transition"
         >
-          Replay →
+          Replay <Icon name="arrowRight" size={14} className="ml-1" />
         </button>
       </div>
 
@@ -163,11 +166,11 @@ export default function AccountPage() {
         <HowItWorks />
         <Link href="/privacy" className="flex items-center justify-between px-4 py-3 border-t border-rim">
           <p className="text-sm text-sub">Privacy Policy</p>
-          <span className="text-dim text-xs">›</span>
+          <Icon name="chevronRight" size={14} className="text-dim" />
         </Link>
         <Link href="/terms" className="flex items-center justify-between px-4 py-3 border-t border-rim">
           <p className="text-sm text-sub">Terms of Use</p>
-          <span className="text-dim text-xs">›</span>
+          <Icon name="chevronRight" size={14} className="text-dim" />
         </Link>
         <div className="flex items-center justify-between px-4 py-3 border-t border-rim">
           <p className="text-sm text-sub">Version</p>
@@ -234,7 +237,7 @@ function HowItWorks() {
         onClick={() => setOpen((o) => !o)}
       >
         <p className="text-sm font-bold text-ink">How BallIQ Works</p>
-        <span className={`text-dim text-xs transition-transform duration-200 inline-block ${open ? 'rotate-180' : ''}`}>▾</span>
+        <Icon name="chevronDown" size={15} className={`text-dim transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="px-4 pb-4 border-t border-rim pt-3 space-y-3">

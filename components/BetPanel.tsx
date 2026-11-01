@@ -12,6 +12,7 @@ import { calculateEloDelta, getKFactor, eventEloToProb } from '@/lib/elo';
 import { Match, BetType, PickSide, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
 import HoldToPick from '@/components/HoldToPick';
+import Icon from '@/components/Icon';
 
 function fmtOdds(o: number) { return o > 0 ? `+${o}` : `${o}`; }
 
@@ -164,7 +165,7 @@ export default function BetPanel({ match }: { match: Match }) {
                       : <span className={`w-8 h-8 shrink-0 rounded-full border flex items-center justify-center text-sm font-black ${
                           selected ? 'border-pick/50 text-pick' : 'border-rim text-sub'
                         }`}>
-                          {opt.pickSide === 'over' ? '▲' : '▼'}
+                          <Icon name={opt.pickSide === 'over' ? 'trendUp' : 'trendDown'} size={15} />
                         </span>}
                     <span className={`flex-1 min-w-0 truncate text-left text-sm font-black ${selected ? 'text-pick' : 'text-ink'}`}>
                       {opt.title}

@@ -7,6 +7,7 @@
 
 import { useThemeStore } from '@/lib/themeStore';
 import { tierStyle } from '@/lib/tiers';
+import Icon from '@/components/Icon';
 
 type Props = {
   elo: number;
@@ -19,8 +20,8 @@ export default function TierLabel({ elo, className = '', diamond = false }: Prop
   const theme = useThemeStore((s) => s.theme);
   const { label, color } = tierStyle(elo, theme);
   return (
-    <span className={className} style={{ color }}>
-      {diamond ? `◆ ${label}` : label}
+    <span className={`${className} ${diamond ? 'inline-flex items-center gap-1' : ''}`} style={{ color }}>
+      {diamond && <Icon name="diamond" size={11} />}{label}
     </span>
   );
 }
