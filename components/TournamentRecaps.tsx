@@ -43,7 +43,11 @@ export default function TournamentRecaps({ picks }: { picks: UserPick[] }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="text-xs font-black text-ink truncate">{t.name}</p>
-                  {live && <span className="text-[8px] font-black text-good uppercase tracking-widest shrink-0">● Live</span>}
+                  {live && (
+                    <span className="inline-flex items-center gap-1 text-[8px] font-black text-good uppercase tracking-widest shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-good" />Live
+                    </span>
+                  )}
                 </div>
                 <p className="text-[10px] text-dim">
                   {tally.settled > 0 ? (

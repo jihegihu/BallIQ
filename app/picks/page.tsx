@@ -11,6 +11,7 @@ import { summarizeRecord } from '@/lib/record';
 import { PICK_LABEL } from '@/lib/pickLabels';
 import { StatTile, BreakdownRow } from '@/components/StatPieces';
 import EloSparkline from '@/components/EloSparkline';
+import Icon from '@/components/Icon';
 
 type Tab = 'pending' | 'results';
 
@@ -217,7 +218,7 @@ export default function PicksPage() {
               </span>
             </div>
             <span className="flex items-center gap-1 text-[10px] font-bold text-dim uppercase tracking-widest">
-              Stats <span className="text-sm leading-none">{statsOpen ? '⌄' : '›'}</span>
+              Stats <Icon name={statsOpen ? 'chevronDown' : 'chevronRight'} size={14} />
             </span>
           </button>
 
@@ -315,7 +316,7 @@ export default function PicksPage() {
       {tab === 'pending' && (
         pending.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-4xl mb-3">🎯</p>
+            <Icon name="target" size={40} strokeWidth={1.25} className="mx-auto mb-3 text-dim" />
             <p className="font-bold text-ink mb-1">No pending picks</p>
             <p className="text-sm text-dim mb-5">Head to the home screen to make picks.</p>
             <Link
@@ -323,7 +324,7 @@ export default function PicksPage() {
               className="inline-block text-white font-black px-5 py-2.5 rounded-xl text-sm"
               style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
             >
-              Pick Games →
+              Pick Games <Icon name="arrowRight" size={15} className="ml-1" />
             </Link>
           </div>
         ) : (
@@ -338,7 +339,7 @@ export default function PicksPage() {
       {tab === 'results' && (
         results.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-4xl mb-3">📊</p>
+            <Icon name="barChart" size={40} strokeWidth={1.25} className="mx-auto mb-3 text-dim" />
             <p className="font-bold text-ink mb-1">No results yet</p>
             <p className="text-sm text-dim">Your settled picks will appear here.</p>
           </div>
@@ -376,7 +377,7 @@ export default function PicksPage() {
                       <span className={`text-[10px] font-bold ml-1.5 tabular-nums ${elo >= 0 ? 'text-good' : 'text-bad'}`}>
                         {elo >= 0 ? '+' : ''}{elo} Elo
                       </span>
-                      <span className="text-dim text-sm ml-1">{collapsed ? '›' : '⌄'}</span>
+                      <Icon name={collapsed ? 'chevronRight' : 'chevronDown'} size={14} className="text-dim ml-1" />
                     </div>
                   </button>
                   {!collapsed && (
@@ -499,11 +500,11 @@ function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: n
 // pick for.
 
 const RESULT_CFG = {
-  win:  { border: 'border-emerald-500/30', tone: 'text-good', mark: '✓' },
-  loss: { border: 'border-red-500/25',     tone: 'text-bad',  mark: '✗' },
-  push: { border: 'border-rim',            tone: 'text-sub',  mark: '—' },
+  win:  { border: 'border-emerald-500/30', tone: 'text-good', mark: 'check' },
+  loss: { border: 'border-red-500/25',     tone: 'text-bad',  mark: 'close' },
+  push: { border: 'border-rim',            tone: 'text-sub',  mark: 'minus' },
   // Never graded — the final score could not be retrieved in time.
-  void: { border: 'border-rim',            tone: 'text-dim',  mark: '⊘' },
+  void: { border: 'border-rim',            tone: 'text-dim',  mark: 'ban' },
 } as const;
 
 function ResultCard({ pick }: { pick: UserPick }) {
@@ -523,7 +524,7 @@ function ResultCard({ pick }: { pick: UserPick }) {
 
         <div className="flex-1 min-w-0">
           <p className="font-black text-ink text-sm leading-tight truncate">
-            <span className={`${cfg.tone} mr-1.5`}>{cfg.mark}</span>
+            <Icon name={cfg.mark} size={14} className={`${cfg.tone} mr-1.5 -mt-0.5`} />
             {label}
           </p>
           <p className="text-xs text-dim mt-0.5 truncate">

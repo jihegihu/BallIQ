@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { hapticImpact, hapticSuccess } from '@/lib/haptics';
+import Icon from '@/components/Icon';
 
 /**
  * How long the user must hold to place a pick.
@@ -223,7 +224,7 @@ export default function HoldToPick({
           aria-hidden
           className="absolute top-1 right-1 w-4 h-4 rounded-full bg-pick flex items-center justify-center pointer-events-none"
         >
-          <span className="text-[10px] font-black leading-none text-[#06080F]">✓</span>
+          <Icon name="check" size={11} strokeWidth={3} className="text-[#06080F]" />
         </span>
       )}
 

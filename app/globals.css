@@ -32,7 +32,7 @@
   --c-rim:    #1E2D4A;
   --c-ink:    #FFFFFF;
   --c-sub:    #94A3B8;
-  --c-dim:    #64748B;
+  --c-dim:    #7C8AA3;   /* 5.35:1 on --c-card; #64748B was 3.92 and failed */
   --c-accent: #A78BFA; /* violet-400 — brand */
   /*
    * Selection / locked-in colour. Deliberately NOT the violet brand accent:
@@ -191,3 +191,54 @@ html.native, html.native body {
 @keyframes ptrSpin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Depth ────────────────────────────────────────────────────────────────────
+   A real elevation scale: every shadow carries an offset AND a soft blur. A
+   zero-offset coloured halo is decoration, not depth. Dark surfaces need a
+   denser shadow than light ones to read at all, so each level is themed. */
+
+:root {
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.22);
+  --shadow-2: 0 2px 4px rgb(0 0 0 / 0.32), 0 6px 14px rgb(0 0 0 / 0.30);
+  --shadow-3: 0 6px 12px rgb(0 0 0 / 0.38), 0 18px 40px rgb(0 0 0 / 0.42);
+}
+html.light {
+  --shadow-1: 0 1px 2px rgb(15 23 42 / 0.07), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-2: 0 2px 4px rgb(15 23 42 / 0.07), 0 6px 14px rgb(15 23 42 / 0.09);
+  --shadow-3: 0 6px 12px rgb(15 23 42 / 0.10), 0 18px 40px rgb(15 23 42 / 0.14);
+}
+
+.elev-1 { box-shadow: var(--shadow-1); }
+.elev-2 { box-shadow: var(--shadow-2); }
+.elev-3 { box-shadow: var(--shadow-3); }
+
+/* ── Browser surfaces ─────────────────────────────────────────────────────────
+   The parts not drawn by hand still carry the design: the caret, the focus
+   ring, text selection. Shipped with browser defaults they belong to no design
+   system and quietly read as unfinished. */
+
+:root { caret-color: var(--c-accent); }
+
+::selection {
+  background: color-mix(in srgb, var(--c-accent) 32%, transparent);
+  color: var(--c-ink);
+}
+
+/* Keyboard focus only — a pointer press should never paint a ring. */
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ── Type ─────────────────────────────────────────────────────────────────────
+   Display sizes tighten as they grow; small text stays open. Flat tracking at
+   every size is what makes type read as untuned. */
+
+.t-display { letter-spacing: -0.035em; line-height: 1.02; }
+.t-title   { letter-spacing: -0.02em;  line-height: 1.12; }
+.t-micro   { letter-spacing: 0.04em; }
+
+/* Numbers in data positions must not jitter as they tick. */
+.tabular { font-variant-numeric: tabular-nums; }

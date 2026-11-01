@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
@@ -15,6 +14,7 @@ import PendingPicksBar from '@/components/PendingPicksBar';
 import BetSheet from '@/components/BetSheet';
 import LiveStrip from '@/components/LiveStrip';
 import { useLiveScores } from '@/lib/useLiveScores';
+import Icon from '@/components/Icon';
 
 // Hook-per-card wrapper (hooks can't be called inside .map). Long-pressing
 // the card chrome opens the full BetSheet with a haptic thump.
@@ -32,7 +32,7 @@ function LongPressCard({ onLongPress, children }: { onLongPress: () => void; chi
         if ((e.target as HTMLElement).closest('[data-bet-button]')) return;
         handlers.onPointerDown(e);
       }}
-      className="bg-card border border-rim rounded-2xl overflow-hidden select-none"
+      className="bg-card border border-rim rounded-2xl overflow-hidden select-none elev-1"
     >
       {children}
     </div>
@@ -172,7 +172,8 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
         </p>
         {weeklyDelta !== 0 && (
           <p className={`text-[11px] font-black tabular-nums ${weeklyDelta > 0 ? 'text-good' : 'text-bad'}`}>
-            {weeklyDelta > 0 ? '▲ +' : '▼ '}{Math.abs(weeklyDelta)} this week
+            <Icon name={weeklyDelta > 0 ? 'trendUp' : 'trendDown'} size={13} className="mr-1 -mt-px" />
+            {weeklyDelta > 0 ? '+' : '−'}{Math.abs(weeklyDelta)} this week
           </p>
         )}
       </div>
@@ -201,7 +202,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
       {/* Game cards */}
       {visible.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-4xl mb-3">📅</p>
+          <Icon name="calendar" size={40} strokeWidth={1.25} className="mx-auto mb-3 text-dim" />
           <p className="font-bold text-ink mb-1">
             No {sport === 'ALL' ? '' : sport === 'SOCCER' ? 'soccer ' : sportName(sport as Sport) + ' '}games right now
           </p>
@@ -212,7 +213,8 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
               onClick={() => { hapticImpact('light'); setSport('ALL'); }}
               className="mt-1 text-sm font-bold text-accent active:scale-95 transition"
             >
-              See all {upcoming.length} game{upcoming.length !== 1 ? 's' : ''} →
+              See all {upcoming.length} game{upcoming.length !== 1 ? 's' : ''}
+              <Icon name="arrowRight" size={15} className="ml-1.5" />
             </button>
           ) : (
             <p className="text-sm text-dim">
@@ -249,7 +251,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     href={`/matches/${match.id}`}
                     className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[11px] font-bold"
                   >
-                    More picks <span className="text-sm leading-none">›</span>
+                    More picks <Icon name="chevronRight" size={14} className="ml-0.5" />
                   </Link>
                 </div>
 
@@ -288,7 +290,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                           {team}
                         </p>
                         <p className={`text-base font-black tabular-nums leading-tight ${selected ? 'text-pick' : 'text-good'}`}>
-                          ▲ +{proj.projectedGain}
+                          <Icon name="trendUp" size={14} className="mr-1 -mt-0.5" />+{proj.projectedGain}
                           <span className="ml-0.5 text-[9px] font-bold">Elo</span>
                         </p>
                         {/* Risk only — the odds and favourite/underdog line

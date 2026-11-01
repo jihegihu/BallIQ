@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Installed agent-skill directories vendor minified bundles
+    // (modern-screenshot.umd.js alone produced 156 findings). Tool code is not
+    // project source and should not be linted as if it were.
+    ".claude/**",
+    ".agents/**",
+    ".codex/**",
+    ".tmpwork/**",
   ]),
 ]);
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useUserStore } from '@/lib/userStore';
+import Icon, { type IconName } from '@/components/Icon';
 
 type Scope = 'global' | 'friends';
 type SportTab = 'global' | 'nba' | 'nfl' | 'mlb' | 'soccer' | 'tennis';
@@ -40,7 +41,8 @@ const ELO_KEY: Record<SportTab, keyof LeaderRow> = {
   tennis: 'tennis_elo',
 };
 
-const RANK_ICONS = ['🥇', '🥈', '🥉'];
+// Gold / silver / bronze, as tints rather than three different emoji.
+const RANK_TINTS = ['#FBBF24', '#CBD5E1', '#D08A50'];
 
 function rankLabel(elo: number): string {
   if (elo >= 2000) return 'Elite';
@@ -127,7 +129,7 @@ export default function LeaderboardPage() {
 
       {/* Global / Friends scope toggle */}
       <div className="flex bg-card border border-rim rounded-xl p-1 gap-1 mb-4">
-        {([['global', '🌎 Global'], ['friends', '🤝 Friends']] as [Scope, string][]).map(([key, label]) => (
+        {([['global', 'globe', 'Global'], ['friends', 'users', 'Friends']] as [Scope, IconName, string][]).map(([key, icon, label]) => (
           <button
             key={key}
             onClick={() => { setScope(key); setAddMsg(''); }}
@@ -135,7 +137,9 @@ export default function LeaderboardPage() {
               scope === key ? 'bg-violet-600 text-white' : 'text-dim hover:text-sub'
             }`}
           >
-            {label}
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Icon name={icon} size={14} />{label}
+            </span>
           </button>
         ))}
       </div>
@@ -171,12 +175,12 @@ export default function LeaderboardPage() {
           href="/"
           className="mb-4 flex items-center gap-3 bg-accent/5 border border-accent/20 rounded-xl px-4 py-3 hover:border-accent/40 transition"
         >
-          <span className="text-xl">🎯</span>
+          <Icon name="target" size={20} className="text-accent" />
           <div className="flex-1">
             <p className="text-sm font-black text-ink">You&rsquo;re not on the board yet</p>
             <p className="text-[11px] text-dim mt-0.5">Make your first pick to enter the rankings.</p>
           </div>
-          <span className="text-accent font-black">›</span>
+          <Icon name="chevronRight" size={15} className="text-accent" />
         </a>
       )}
 
@@ -233,7 +237,7 @@ export default function LeaderboardPage() {
       {/* Empty */}
       {!loading && !error && rows.length === 0 && (
         <div className="text-center py-16">
-          <p className="text-4xl mb-3">{scope === 'friends' ? '🤝' : '🏆'}</p>
+          <Icon name={scope === 'friends' ? 'users' : 'trophy'} size={40} strokeWidth={1.25} className="mx-auto mb-3 text-dim" />
           <p className="font-bold text-ink mb-1">
             {scope === 'friends' ? 'No friends yet' : 'No rankings yet'}
           </p>
@@ -265,7 +269,7 @@ export default function LeaderboardPage() {
                 {/* Rank */}
                 <div className="w-7 text-center shrink-0">
                   {rank <= 3
-                    ? <span className="text-base">{RANK_ICONS[rank - 1]}</span>
+                    ? <Icon name="medal" size={18} className="mx-auto" style={{ color: RANK_TINTS[rank - 1] }} />
                     : <span className="text-xs font-black text-dim">#{rank}</span>
                   }
                 </div>
@@ -286,7 +290,7 @@ export default function LeaderboardPage() {
 
                 {/* Streak */}
                 {row.current_streak >= 3 && (
-                  <span className="text-[10px] font-bold text-orange-400">{row.current_streak}🔥</span>
+                  <span className="text-[10px] font-bold text-orange-400 inline-flex items-center gap-0.5">{row.current_streak}<Icon name="flame" size={11} /></span>
                 )}
 
                 {/* Elo + weekly trend */}
@@ -296,7 +300,7 @@ export default function LeaderboardPage() {
                   </p>
                   {row.weekly_delta !== 0 && (
                     <p className={`text-[10px] font-bold tabular-nums ${row.weekly_delta > 0 ? 'text-good' : 'text-bad'}`}>
-                      {row.weekly_delta > 0 ? '▲' : '▼'}{Math.abs(row.weekly_delta)} this week
+                      <Icon name={row.weekly_delta > 0 ? 'trendUp' : 'trendDown'} size={11} className="mr-0.5" />{Math.abs(row.weekly_delta)} this week
                     </p>
                   )}
                 </div>
@@ -309,7 +313,7 @@ export default function LeaderboardPage() {
                     aria-label={`Remove ${row.username}`}
                     className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-dim hover:text-bad hover:bg-red-500/10 transition disabled:opacity-40"
                   >
-                    ✕
+                    <Icon name="close" size={13} />
                   </button>
                 )}
               </div>
