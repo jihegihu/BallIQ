@@ -13,6 +13,7 @@ import { Match, BetType, PickSide, UserPick } from '@/types';
 import TeamAvatar from '@/components/TeamAvatar';
 import HoldToPick from '@/components/HoldToPick';
 import Icon from '@/components/Icon';
+import { isLocked } from '@/lib/lock';
 
 function fmtOdds(o: number) { return o > 0 ? `+${o}` : `${o}`; }
 
@@ -20,10 +21,6 @@ function fmtOdds(o: number) { return o > 0 ? `+${o}` : `${o}`; }
 function shortName(team: string): string {
   const parts = team.split(' ');
   return parts.length > 1 ? parts[parts.length - 1] : team;
-}
-
-function isLocked(commenceTime: string) {
-  return new Date(commenceTime).getTime() - Date.now() < 15 * 60 * 1000;
 }
 
 type Option = {

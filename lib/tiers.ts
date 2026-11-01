@@ -18,27 +18,37 @@ export type Tier = {
 
 // Ordered high → low so a simple find() picks the right tier.
 //
-// Everyone starts at 1200, and the band that 1200 lands in is the ENTRY tier.
-// That band used to be called "Advanced", which meant a brand-new account was
-// labelled Advanced before making a single pick — unearned, and it left two of
-// the six tiers reachable only by getting worse. "Contender" says what a new
-// user actually is, and Advanced / Expert / Elite now sit above the start
-// where they have to be climbed to.
+// Eleven tiers, arena-style: new accounts start at START_ELO (800) in the
+// SECOND band, with one below it to fall into and nine above to climb. The
+// previous six-tier ladder started everyone in the middle, so progression
+// began already half-spent.
 //
-// Bands stay tight (150–250 Elo) so the next-tier bar moves visibly; the
-// participation bonus in lib/elo.ts levels a market-rate picker out near 1375,
-// which is early Advanced — so Expert and Elite mean genuinely beating the
-// market, not just playing a lot.
+// Bands are 100 wide at the bottom and widen toward the top. That matters
+// because the Elo engine pays a beginner far more than a veteran: at 800 an
+// even game is roughly +56 / -8, so the first tiers fall every few picks and
+// the pace slows naturally as the rating approaches its equilibrium near 1375
+// (early Sharp). Elite and above therefore mean genuinely beating the market,
+// not merely playing a lot.
 //
-// Colour runs cool → warm with the brand violet at the start: below it reads
-// as cooled off, above it as heating up.
+// Prospect is deliberately wider than the bands above it. Starting at 800 in
+// the middle of a 700-900 band means losing your very first pick cannot demote
+// you — with a 100-wide band the opening loss of ~8 Elo dropped a brand-new
+// account straight into Rookie, which is a miserable first impression.
+//
+// Colour runs cool to warm and deliberately avoids emerald and red, which are
+// already spoken for as win and loss.
 export const TIERS: Tier[] = [
-  { label: 'Elite',     min: 1800, hex: '#EF4444' },  // red-500
-  { label: 'Expert',    min: 1550, hex: '#F97316' },  // orange-500
-  { label: 'Advanced',  min: 1350, hex: '#FBBF24' },  // amber-400
-  { label: 'Contender', min: 1150, hex: '#A78BFA' },  // violet-400 — the 1200 start
-  { label: 'Prospect',  min: 1000, hex: '#38BDF8' },  // sky-400
-  { label: 'Rookie',    min: 0,    hex: '#64748B' },  // slate-500
+  { label: 'Legend',     min: 2050, hex: '#FCD34D' },  // amber-300 — gold, top of the ladder
+  { label: 'All-Star',   min: 1800, hex: '#A78BFA' },  // violet-400
+  { label: 'Elite',      min: 1600, hex: '#C084FC' },  // purple-400
+  { label: 'Expert',     min: 1450, hex: '#F472B6' },  // pink-400
+  { label: 'Sharp',      min: 1300, hex: '#FB923C' },  // orange-400
+  { label: 'Veteran',    min: 1200, hex: '#FACC15' },  // yellow-400
+  { label: 'Specialist', min: 1100, hex: '#A3E635' },  // lime-400
+  { label: 'Challenger', min: 1000, hex: '#2DD4BF' },  // teal-400
+  { label: 'Contender',  min:  900, hex: '#22D3EE' },  // cyan-400
+  { label: 'Prospect',   min:  700, hex: '#38BDF8' },  // sky-400 — the START band
+  { label: 'Rookie',     min:    0, hex: '#64748B' },  // slate-500
 ];
 
 /** Human-readable range, e.g. "1600–2000" or "2000+". */

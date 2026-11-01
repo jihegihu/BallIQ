@@ -15,6 +15,7 @@ import BetSheet from '@/components/BetSheet';
 import LiveStrip from '@/components/LiveStrip';
 import { useLiveScores } from '@/lib/useLiveScores';
 import Icon from '@/components/Icon';
+import { isLocked } from '@/lib/lock';
 
 // Hook-per-card wrapper (hooks can't be called inside .map). Long-pressing
 // the card chrome opens the full BetSheet with a haptic thump.
@@ -52,10 +53,6 @@ const SPORT_LABEL: Partial<Record<Sport, string>> = {
   TENNIS:     'Tennis',
 };
 function sportName(sport: Sport): string { return SPORT_LABEL[sport] ?? sport; }
-
-function isLocked(commenceTime: string) {
-  return new Date(commenceTime).getTime() - Date.now() < 15 * 60 * 1000;
-}
 
 function fmtTime(iso: string) {
   try {

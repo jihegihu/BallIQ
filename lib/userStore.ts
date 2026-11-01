@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { BetType, ConfidenceLevel, User, UserPick } from '@/types';
 import { calculateXP, projectStreak, etDay } from './xp';
+import { START_ELO } from './elo';
 
 const DEFAULT_USER: User = {
   id:            '',
   username:      '',
-  globalElo:     1200,
-  seasonElo:     1200,
+  globalElo:     START_ELO,
+  seasonElo:     START_ELO,
   sportElos:     {},
   xpTotal:       0,
   totalPicks:    0,

@@ -2,6 +2,7 @@
 // Returns the internal UUID used as the PK in user_picks.
 
 import { createAdminClient } from './supabase';
+import { START_ELO } from './elo';
 
 export async function getOrCreateUser(
   clerkId: string,
@@ -27,19 +28,19 @@ export async function getOrCreateUser(
     .insert({
       clerk_id:       clerkId,
       username:       username ?? 'Player',
-      global_elo:     1200,
-      season_elo:     1200,
+      global_elo:     START_ELO,
+      season_elo:     START_ELO,
       xp_total:       0,
       total_picks:    0,
       weeks_active:   1,
       current_streak: 0,
       last_pick_date: null,
-      nba_elo:        1200,
-      nfl_elo:        1200,
-      mlb_elo:        1200,
-      ncaa_elo:       1200,
-      soccer_elo:     1200,
-      tennis_elo:     1200,
+      nba_elo:        START_ELO,
+      nfl_elo:        START_ELO,
+      mlb_elo:        START_ELO,
+      ncaa_elo:       START_ELO,
+      soccer_elo:     START_ELO,
+      tennis_elo:     START_ELO,
     })
     .select('id')
     .single();

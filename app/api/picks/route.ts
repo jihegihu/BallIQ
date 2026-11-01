@@ -9,13 +9,9 @@ import { getOrCreateUser } from '@/lib/getOrCreateUser';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
 import { calculateXP, projectStreak, etDay } from '@/lib/xp';
 import { UserPick, BetType, PickSide, ConfidenceLevel, PickOutcome, Sport } from '@/types';
+import { isLocked } from '@/lib/lock';
 
 // Picks lock 15 minutes before tip-off — same threshold the UI uses.
-const LOCK_WINDOW_MS = 15 * 60 * 1000;
-
-function isLocked(commenceTime: string): boolean {
-  return new Date(commenceTime).getTime() - Date.now() < LOCK_WINDOW_MS;
-}
 
 function rowToUserPick(
   row: Record<string, unknown>,

@@ -55,6 +55,17 @@ export function impliedProbToEventElo(prob: number): number {
 // Veterans: slow movement (stable, earned)
 // Gated by BOTH pick count AND weeks active to prevent farming
 
+/**
+ * Where a new account begins.
+ *
+ * 800 rather than 1200: the eventElo scale puts an even game at 1200, so 1200
+ * is "market-rate skill", not a beginning. Starting below it means the early
+ * climb is fast and visible (an even game pays about +56/-8 at 800) and the
+ * first arena tiers fall every few picks, instead of a new user arriving
+ * halfway up a ladder they did not climb.
+ */
+export const START_ELO = 800;
+
 export const ELO_FLOOR = 100;  // ratings never fall below this
 
 export const K_NEW = 64;   // brand-new account: rating moves fast
