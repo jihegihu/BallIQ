@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useUserStore } from '@/lib/userStore';
 import Icon, { type IconName } from '@/components/Icon';
+import TierStanding, { type Standing } from '@/components/TierStanding';
 
 type Scope = 'global' | 'friends';
 type SportTab = 'global' | 'nba' | 'nfl' | 'mlb' | 'soccer' | 'tennis';
@@ -58,6 +59,7 @@ export default function LeaderboardPage() {
   const refreshNonce          = useUserStore((s) => s.refreshNonce);
   const [rows, setRows]       = useState<LeaderRow[]>([]);
   const [myId, setMyId]       = useState<string | null>(null);
+  const [standing, setStanding] = useState<Standing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
 
@@ -71,10 +73,11 @@ export default function LeaderboardPage() {
     setError('');
     return fetch(`/api/leaderboard?sport=${sport}&scope=${scope}`)
       .then((r) => r.json())
-      .then(({ users, myId: me, error: e }) => {
+      .then(({ users, myId: me, error: e, standing: st }) => {
         if (e) { setError(e); return; }
         setRows(users ?? []);
         setMyId(me ?? null);
+        setStanding(st ?? null);
       })
       .catch(() => setError('Failed to load leaderboard'))
       .finally(() => setLoading(false));
@@ -126,6 +129,12 @@ export default function LeaderboardPage() {
       {/* Rating trend — renders nothing until there's history worth a line */}
       <div className="mb-4">
       </div>
+
+      {/* Where you sit on the whole ladder, shown before the board: "how am I
+          doing" is the question people open this page with, and the top-50
+          board cannot answer it for anyone outside the top 50. Global scope
+          only — a friends-only distribution would be meaningless. */}
+      {scope === 'global' && sport === 'global' && <TierStanding standing={standing} />}
 
       {/* Global / Friends scope toggle */}
       <div className="flex bg-card border border-rim rounded-xl p-1 gap-1 mb-4">

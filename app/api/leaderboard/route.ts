@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createAdminClient } from '@/lib/supabase';
+import { TIERS } from '@/lib/tiers';
 
 const SPORT_COLUMN: Record<string, string> = {
   global: 'global_elo',
@@ -78,5 +79,61 @@ export async function GET(req: NextRequest) {
     return { ...r, wins: s?.wins ?? 0, losses: s?.losses ?? 0, weekly_delta: s?.weekly ?? 0 };
   });
 
-  return NextResponse.json({ users, sport, column, scope, myId: myId ?? null });
+  // ── Tier distribution ───────────────────────────────────────────────────
+  // How the whole player base is spread across the ladder, plus where the
+  // viewer sits in it. The leaderboard only ever shows the top 50, so without
+  // this a user outside that has no way to tell whether they are near the top
+  // or the bottom — which is exactly the thing that makes a ladder motivating.
+  //
+  // Only rated players count (total_picks > 0); a signed-up account that has
+  // never picked would otherwise pile up in the bottom tier and flatten the
+  // distribution.
+  const { data: allRated } = await admin
+    .from('users')
+    .select(column)
+    .gt('total_picks', 0);
+
+  // Supabase types a dynamic-column select loosely, so narrow it once here.
+  const elos = ((allRated ?? []) as unknown as Record<string, unknown>[])
+    .map((r) => r[column])
+    .filter((n): n is number => typeof n === 'number');
+
+  // Prefer the row already loaded; fall back to a direct read when the viewer
+  // is outside the top 50 (the common case, and the one that needs this most).
+  let myElo: number | undefined;
+  if (myId) {
+    const onBoard = rows.find((r) => r.id === myId);
+    if (onBoard && typeof onBoard[column] === 'number') {
+      myElo = onBoard[column] as number;
+    } else {
+      const { data: mine } = await admin.from('users').select(column).eq('id', myId).single();
+      const v = (mine as unknown as Record<string, unknown> | null)?.[column];
+      if (typeof v === 'number') myElo = v;
+    }
+  }
+
+  const distribution = TIERS.map((t, i) => ({
+    label: t.label,
+    min:   t.min,
+    max:   i === 0 ? null : TIERS[i - 1].min,
+    count: elos.filter((e) => e >= t.min && (i === 0 || e < TIERS[i - 1].min)).length,
+  }));
+
+  // Share of OTHER players below this user. Counting yourself in your own
+  // denominator made the top player "ahead of 100%", which is both wrong and
+  // the kind of thing people notice.
+  let percentile: number | null = null;
+  let ahead = 0;
+  if (myElo != null && elos.length > 1) {
+    const others = [...elos];
+    others.splice(others.indexOf(myElo), 1);   // drop one instance of me
+    ahead = others.filter((e) => e < myElo).length;
+    percentile = Math.round((ahead / others.length) * 100);
+  }
+
+  return NextResponse.json({
+    users, sport, column, scope,
+    myId: myId ?? null,
+    standing: { myElo: myElo ?? null, percentile, ahead, totalRated: elos.length, distribution },
+  });
 }
