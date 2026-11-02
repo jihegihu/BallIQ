@@ -3,14 +3,14 @@ import Icon from '@/components/Icon';
 
 export const metadata = { title: 'Privacy Policy · BallIQ' };
 
-// NOTE: This is a starting template, not legal advice. Before submitting to the
-// app stores, have it reviewed and replace the [bracketed] placeholders.
+// NOTE: Written in-house, not reviewed by a lawyer. Contact address must stay
+// a real, monitored inbox: the policy promises deletion requests are honoured.
 export default function PrivacyPage() {
   return (
     <main className="selectable min-h-screen max-w-md mx-auto px-5 pt-6 pb-28">
       <Link href="/account" className="inline-flex items-center gap-1 text-sub hover:text-ink text-sm"><Icon name="chevronLeft" size={15} />Back</Link>
       <h1 className="text-2xl font-black text-ink mt-3 mb-1">Privacy Policy</h1>
-      <p className="text-[11px] text-dim mb-6">Last updated: June 2026</p>
+      <p className="text-[11px] text-dim mb-6">Last updated: November 2026</p>
 
       <div className="space-y-5 text-sm text-sub leading-relaxed">
         <Section title="The short version">
@@ -56,7 +56,8 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="Contact">
-          Questions about privacy? Email <b className="text-ink">[support@yourdomain.com]</b>.
+          Questions about privacy, or want your data deleted? Email{' '}
+          <a href="mailto:jihegihu@gmail.com" className="text-ink underline">jihegihu@gmail.com</a>.
         </Section>
       </div>
     </main>
