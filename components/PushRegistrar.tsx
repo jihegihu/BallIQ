@@ -1,17 +1,42 @@
 'use client';
 
-// Registers the device for push notifications — native app only. On the web
-// this is a no-op: the Capacitor checks short-circuit before the push plugin is
-// ever imported, so the browser bundle never touches native APIs.
+// Keeps this device's push registration in step with who is signed in —
+// native app only. On the web this is a no-op: the Capacitor checks
+// short-circuit before the push plugin is ever imported, so the browser
+// bundle never touches native APIs.
+//
+// It runs in BOTH directions, which is the point:
+//
+//   signed in  → register, and tell the server this device belongs to them
+//   signed out → delete the server's record, so nothing can be sent here
+//
+// The signed-out branch is the safety net. Sign-out itself calls
+// unregisterDevice() directly (see app/account/page.tsx), but that call can
+// fail — no signal, app killed mid-redirect, or a session that expired
+// without the user ever pressing Sign out. Without this branch any of those
+// left a live token on the server pointing at a user who had logged out, and
+// the next settlement sync happily pushed "your picks settled" to a phone
+// whose owner had signed out days earlier. Re-checking on every launch means
+// the leak closes itself even when the sign-out never got the chance.
 
 import { useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { rememberToken, storedToken, unregisterDevice } from '@/lib/pushDevice';
 
 export default function PushRegistrar() {
   const { isLoaded, isSignedIn } = useUser();
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded) return;
+
+    // ── Signed out: make sure this device is not on anybody's send list ──────
+    if (!isSignedIn) {
+      // Only act if we actually left something behind, so a signed-out
+      // visitor on the web does no work and makes no requests.
+      if (storedToken()) void unregisterDevice();
+      return;
+    }
+
     let cancelled = false;
 
     (async () => {
@@ -21,9 +46,16 @@ export default function PushRegistrar() {
 
         const { PushNotifications } = await import('@capacitor/push-notifications');
 
+        // Clear any listeners from a previous session on this install, so
+        // signing in as someone else cannot leave the old handler attached.
+        await PushNotifications.removeAllListeners();
+
         // Send the token to our server once iOS hands it to us.
         await PushNotifications.addListener('registration', (token) => {
           if (cancelled) return;
+          // Remember it first: sign-out needs to be able to name this token
+          // even if the POST below never lands.
+          rememberToken(token.value);
           fetch('/api/push/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

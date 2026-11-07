@@ -6,7 +6,13 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 // session for POST; /api/admin/* requires the CRON_SECRET bearer.
 // /privacy and /terms are public so app-store reviewers (and the store listing)
 // can reach them without an account.
-const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/profile/(.*)', '/privacy', '/terms', '/api/sync-odds(.*)', '/api/admin(.*)']);
+// /api/push/register is public at this layer for the sake of its DELETE: a
+// device that has just signed out must still be able to say "stop sending
+// notifications to me", and auth.protect() here would reject that request
+// before the handler ever saw it — which is exactly how signed-out phones kept
+// receiving "your picks settled". Its POST still requires a Clerk session;
+// the route enforces that itself.
+const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/profile/(.*)', '/privacy', '/terms', '/api/sync-odds(.*)', '/api/admin(.*)', '/api/push/register']);
 
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {

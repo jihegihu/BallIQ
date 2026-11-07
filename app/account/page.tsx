@@ -7,15 +7,9 @@ import { useUser, useClerk } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
 import { useThemeStore } from '@/lib/themeStore';
 import { useOnboardingStore } from '@/lib/onboardingStore';
+import { unregisterDevice } from '@/lib/pushDevice';
 import Icon from '@/components/Icon';
-
-function eloRankLabel(elo: number) {
-  if (elo >= 2000) return 'Elite';
-  if (elo >= 1600) return 'Expert';
-  if (elo >= 1200) return 'Advanced';
-  if (elo >= 800)  return 'Intermediate';
-  return 'Rookie';
-}
+import TierLabel from '@/components/TierLabel';
 
 export default function AccountPage() {
   const { user: clerkUser, isLoaded } = useUser();
@@ -34,6 +28,10 @@ export default function AccountPage() {
     try {
       const res = await fetch('/api/account', { method: 'DELETE' });
       if (res.ok) {
+        // push_tokens is FK'd ON DELETE CASCADE, so the row is already gone;
+        // this is for the device side -- hand the APNs registration back
+        // and clear anything still sitting in Notification Center.
+        await unregisterDevice();
         await signOut({ redirectUrl: '/sign-in' });
       } else {
         const data = await res.json().catch(() => ({}));
@@ -85,7 +83,7 @@ export default function AccountPage() {
             <Icon name="diamond" size={11} className="text-accent" />
             <span className="text-sm font-black text-accent tabular-nums">{user.globalElo.toLocaleString()}</span>
             <span className="text-dim text-[10px]">·</span>
-            <span className="text-[10px] text-sub font-bold">{eloRankLabel(user.globalElo)}</span>
+            <TierLabel elo={user.globalElo} className="text-[10px] font-bold" />
           </div>
           {joinDate && <p className="text-[10px] text-dim mt-0.5">Member since {joinDate}</p>}
         </div>
@@ -180,7 +178,14 @@ export default function AccountPage() {
 
       {/* ── Sign out ─────────────────────────────────────────────── */}
       <button
-        onClick={() => signOut({ redirectUrl: '/sign-in' })}
+        onClick={async () => {
+          // Before the session goes, not after: once Clerk has signed the
+          // user out there is nothing left to tell the server who to stop
+          // paging. Awaited even though the DELETE needs no session -- if
+          // it fails, PushRegistrar sweeps the token on the next launch.
+          await unregisterDevice();
+          await signOut({ redirectUrl: '/sign-in' });
+        }}
         className="w-full bg-card border border-red-500/20 rounded-2xl py-4 text-sm font-bold text-bad hover:bg-red-500/5 active:scale-[0.98] transition-all"
       >
         Sign Out
@@ -242,8 +247,8 @@ function HowItWorks() {
       {open && (
         <div className="px-4 pb-4 border-t border-rim pt-3 space-y-3">
           <Item
-            title="Elo starts at 1,200"
-            body="Every new player starts at 1,200 — the chess standard. Beat the odds, rise. Lose, drop. The market sets the baseline, you beat it."
+            title="Everyone starts at 800"
+            body="You start at 800 and climb. 1,200 is the market's own level — reach it and you're picking as well as the odds do. Past that, every point comes from beating them."
           />
           <Item
             title="Odds set the difficulty"
