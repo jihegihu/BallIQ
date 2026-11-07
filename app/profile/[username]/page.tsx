@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase';
 import Link from 'next/link';
 import TierLabel from '@/components/TierLabel';
 import { tierFor } from '@/lib/tiers';
+import { START_ELO } from '@/lib/elo';
 import { summarizeRecord } from '@/lib/record';
 import Icon from '@/components/Icon';
 
@@ -107,7 +108,7 @@ export default async function PublicProfilePage({
       <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">Sport Ratings</p>
       <div className="grid grid-cols-2 gap-2 mb-5">
         {SPORT_COLS.map(({ key, label }) => {
-          const elo  = (u[key] as number) ?? 1200;
+          const elo  = (u[key] as number) ?? START_ELO;
           return (
             <div key={key} className="bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center justify-between">
               <div>

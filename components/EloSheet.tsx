@@ -66,7 +66,7 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
   }
 
   const sports = SPORT_DISPLAY
-    .map((s) => ({ ...s, elo: user.sportElos[s.key] ?? 1200, rec: recordFor(s.members) }))
+    .map((s) => ({ ...s, elo: user.sportElos[s.key] ?? START_ELO, rec: recordFor(s.members) }))
     // Sports the user actually plays float to the top.
     .sort((a, b) => b.rec.total - a.rec.total || b.elo - a.elo);
 

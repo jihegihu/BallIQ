@@ -38,8 +38,9 @@ export type Tier = {
 //                narrow (80-100) so the early tiers fall every few picks.
 //   1160 - 1700  earned. Veteran is the band that contains the no-edge
 //                equilibrium, so reaching it means "you match the market".
-//                Every tier above it requires genuinely beating the market,
-//                and the bands widen (100-120) as that gets harder.
+//                Every tier above it requires genuinely beating the market.
+//                Bands run 100-120 wide, so a tier is several good picks
+//                rather than one.
 //
 // An earlier version of this table ran to Legend at 2050, which was reachable
 // only because the engine then handed out a flat per-pick bonus that inflated

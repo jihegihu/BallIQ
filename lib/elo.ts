@@ -60,8 +60,8 @@ export function impliedProbToEventElo(prob: number): number {
  *
  * 800 rather than 1200: the eventElo scale puts an even game at 1200, so 1200
  * is "market-rate skill", not a beginning. Starting below it means the early
- * climb is fast and visible (an even game pays about +56/-8 at 800) and the
- * first arena tiers fall every few picks, instead of a new user arriving
+ * climb is fast and visible (an even game pays +41/-23 at 800, K=64) and
+ * the first arena tiers fall every few picks, instead of a new user arriving
  * halfway up a ladder they did not climb.
  */
 export const START_ELO = 800;
@@ -209,9 +209,23 @@ export function calculateEloDelta({
   //
   // The floor of 1 keeps a win from paying 0 on a near-certain favourite,
   // where stake(1 - E) rounds away. It applies to the loss too, so the
-  // symmetry survives; the residual EV it leaves at the extremes is a
-  // fraction of an Elo point and the 0.01/0.99 probability clamp in
-  // impliedProbToEventElo bounds how far it can go.
+  // symmetry survives.
+  //
+  // Rounding to whole Elo leaves a residual that is worth being honest about.
+  // Writing round(x) = x + e with e in [-0.5, 0.5], the per-pick EV becomes
+  // p*e_gain - (1-p)*e_loss, which is bounded at +-0.5 whatever p is. Across a
+  // realistic spread of odds it averages to +0.000 (measured, every K and
+  // confidence), so it causes no drift — but it is FIXED for a given
+  // (p, K, confidence), and the board displays the gain and loss, so someone
+  // who deliberately hunts one favourable combination can earn about
+  // +0.5/pick, or ~+250 over 500 picks. Worst case found by scan: p=0.85 at
+  // low confidence, which shows +5/-25 where fair value is +4.5/-25.5.
+  //
+  // It cannot be rounded away: any integer payoff carries it. Removing it
+  // means storing fractional ratings, which is a schema change (users.global_elo
+  // and user_picks.elo_delta are both integer). Left as-is deliberately, being
+  // 5x smaller than the bonus it replaced and requiring effort to exploit
+  // rather than accruing to everyone automatically.
   const projectedGain = Math.max(1, Math.round(stake * (1 - expectedScore)));
   const projectedLoss = Math.min(
     Math.max(1, Math.round(stake * expectedScore)),
