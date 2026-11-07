@@ -41,7 +41,7 @@ const SLIDES = [
   {
     icon: 'trophy' as const,
     title: 'Climb the Tiers',
-    subtitle: 'Everyone starts at 1,200 — the chess standard.',
+    subtitle: 'Everyone starts at 800. Climb.',
     body: null,
     extra: <TierLadder />,
   },

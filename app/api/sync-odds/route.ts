@@ -10,7 +10,7 @@ import { fetchGameDetails, fetchEspnScores } from '@/lib/espn';
 import { createAdminClient } from '@/lib/supabase';
 import { checkCronAuth } from '@/lib/cronAuth';
 import { sendApnsPush } from '@/lib/apns';
-import { calculateEloDelta, getKFactor } from '@/lib/elo';
+import { calculateEloDelta, getKFactor, START_ELO } from '@/lib/elo';
 import { Match, BetType, ConfidenceLevel, Sport } from '@/types';
 
 function matchToRow(m: Match) {
@@ -438,12 +438,12 @@ async function runSync(fullSweep = false) {
         // Track per-DB-column Elo so multiple soccer leagues accumulate into one column
         const ud = userData as Record<string, unknown>;
         const colElos: Record<string, number> = {
-          nba_elo:    (ud.nba_elo    as number) ?? 1200,
-          nfl_elo:    (ud.nfl_elo    as number) ?? 1200,
-          mlb_elo:    (ud.mlb_elo    as number) ?? 1200,
-          ncaa_elo:   (ud.ncaa_elo   as number) ?? 1200,
-          soccer_elo: (ud.soccer_elo as number) ?? 1200,
-          tennis_elo: (ud.tennis_elo as number) ?? 1200,
+          nba_elo:    (ud.nba_elo    as number) ?? START_ELO,
+          nfl_elo:    (ud.nfl_elo    as number) ?? START_ELO,
+          mlb_elo:    (ud.mlb_elo    as number) ?? START_ELO,
+          ncaa_elo:   (ud.ncaa_elo   as number) ?? START_ELO,
+          soccer_elo: (ud.soccer_elo as number) ?? START_ELO,
+          tennis_elo: (ud.tennis_elo as number) ?? START_ELO,
         };
 
         const userUpdates: ResolvedUpdate[] = [];

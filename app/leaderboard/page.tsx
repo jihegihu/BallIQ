@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useUserStore } from '@/lib/userStore';
 import Icon, { type IconName } from '@/components/Icon';
 import TierStanding, { type Standing } from '@/components/TierStanding';
+import { tierFor } from '@/lib/tiers';
 
 type Scope = 'global' | 'friends';
 /** What the page is showing. 'climb' is a view, not a server scope: the API
@@ -48,14 +49,6 @@ const ELO_KEY: Record<SportTab, keyof LeaderRow> = {
 
 // Gold / silver / bronze, as tints rather than three different emoji.
 const RANK_TINTS = ['#FBBF24', '#CBD5E1', '#D08A50'];
-
-function rankLabel(elo: number): string {
-  if (elo >= 2000) return 'Elite';
-  if (elo >= 1600) return 'Expert';
-  if (elo >= 1200) return 'Advanced';
-  if (elo >= 800)  return 'Intermediate';
-  return 'Rookie';
-}
 
 export default function LeaderboardPage() {
   const [view, setView]       = useState<View>('global');
@@ -297,7 +290,7 @@ export default function LeaderboardPage() {
                     {isMe && <span className="ml-1 text-[9px] font-bold opacity-70">(you)</span>}
                   </p>
                   <p className="text-[10px] text-dim">
-                    {rankLabel(elo)} ·{' '}
+                    {tierFor(elo).label} ·{' '}
                     <span className="text-good font-bold">{row.wins}W</span>
                     <span className="mx-0.5">–</span>
                     <span className="text-bad font-bold">{row.losses}L</span>

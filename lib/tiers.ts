@@ -19,32 +19,49 @@ export type Tier = {
 // Ordered high → low so a simple find() picks the right tier.
 //
 // Eleven tiers, arena-style: new accounts start at START_ELO (800) in the
-// SECOND band, with one below it to fall into and nine above to climb. The
-// previous six-tier ladder started everyone in the middle, so progression
-// began already half-spent.
+// SECOND band, with one below it to fall into and nine above to climb.
 //
-// Bands are 100 wide at the bottom and widen toward the top. That matters
-// because the Elo engine pays a beginner far more than a veteran: at 800 an
-// even game is roughly +56 / -8, so the first tiers fall every few picks and
-// the pace slows naturally as the rating approaches its equilibrium near 1375
-// (early Sharp). Elite and above therefore mean genuinely beating the market,
-// not merely playing a lot.
+// WHERE THESE NUMBERS COME FROM. They are not round numbers chosen by feel —
+// they are pinned to what the rating engine can actually produce. lib/elo.ts
+// is calibrated so a picker with no edge over the market sits at 1200, and
+// simulation over 600 picks at veteran K puts genuine skill here:
+//
+//   no edge at all   ~1209      (and luck alone reaches ~1342 at the 95th %ile)
+//   +4%  good amateur ~1342
+//   +8%  semi-pro     ~1477
+//   +12% exceptional  ~1618
+//
+// So the ladder splits into two halves that mean different things:
+//
+//   700 - 1160   the climb. Everyone makes this, because 800 starts below the
+//                market's own level and the engine pays the gap. Bands are
+//                narrow (80-100) so the early tiers fall every few picks.
+//   1160 - 1700  earned. Veteran is the band that contains the no-edge
+//                equilibrium, so reaching it means "you match the market".
+//                Every tier above it requires genuinely beating the market,
+//                and the bands widen (100-120) as that gets harder.
+//
+// An earlier version of this table ran to Legend at 2050, which was reachable
+// only because the engine then handed out a flat per-pick bonus that inflated
+// every account regardless of skill. With that bonus removed (see the long
+// comment in lib/elo.ts) nothing above ~1450 was attainable and the top five
+// tiers were dead. These thresholds are what the corrected engine supports.
 //
 // Prospect is deliberately wider than the bands above it. Starting at 800 in
 // the middle of a 700-900 band means losing your very first pick cannot demote
-// you — with a 100-wide band the opening loss of ~8 Elo dropped a brand-new
-// account straight into Rookie, which is a miserable first impression.
+// you — with a 100-wide band the opening loss dropped a brand-new account
+// straight into Rookie, which is a miserable first impression.
 //
 // Colour runs cool to warm and deliberately avoids emerald and red, which are
 // already spoken for as win and loss.
 export const TIERS: Tier[] = [
-  { label: 'Legend',     min: 2050, hex: '#FCD34D' },  // amber-300 — gold, top of the ladder
-  { label: 'All-Star',   min: 1800, hex: '#A78BFA' },  // violet-400
-  { label: 'Elite',      min: 1600, hex: '#C084FC' },  // purple-400
-  { label: 'Expert',     min: 1450, hex: '#F472B6' },  // pink-400
-  { label: 'Sharp',      min: 1300, hex: '#FB923C' },  // orange-400
-  { label: 'Veteran',    min: 1200, hex: '#FACC15' },  // yellow-400
-  { label: 'Specialist', min: 1100, hex: '#A3E635' },  // lime-400
+  { label: 'Legend',     min: 1700, hex: '#FCD34D' },  // amber-300 — gold, top of the ladder
+  { label: 'All-Star',   min: 1580, hex: '#A78BFA' },  // violet-400
+  { label: 'Elite',      min: 1480, hex: '#C084FC' },  // purple-400
+  { label: 'Expert',     min: 1380, hex: '#F472B6' },  // pink-400
+  { label: 'Sharp',      min: 1280, hex: '#FB923C' },  // orange-400
+  { label: 'Veteran',    min: 1160, hex: '#FACC15' },  // yellow-400 — contains the market baseline
+  { label: 'Specialist', min: 1080, hex: '#A3E635' },  // lime-400
   { label: 'Challenger', min: 1000, hex: '#2DD4BF' },  // teal-400
   { label: 'Contender',  min:  900, hex: '#22D3EE' },  // cyan-400
   { label: 'Prospect',   min:  700, hex: '#38BDF8' },  // sky-400 — the START band

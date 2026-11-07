@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { createAdminClient } from '@/lib/supabase';
 import { getOrCreateUser } from '@/lib/getOrCreateUser';
-import { calculateEloDelta, getKFactor } from '@/lib/elo';
+import { calculateEloDelta, getKFactor, START_ELO } from '@/lib/elo';
 import { calculateXP, projectStreak, etDay } from '@/lib/xp';
 import { UserPick, BetType, PickSide, ConfidenceLevel, PickOutcome, Sport } from '@/types';
 import { isLocked } from '@/lib/lock';
@@ -101,16 +101,16 @@ export async function GET() {
       globalElo:     user.global_elo,
       seasonElo:     user.season_elo,
       sportElos: {
-        NBA:        (user as any).nba_elo    ?? 1200,
-        NFL:        (user as any).nfl_elo    ?? 1200,
-        MLB:        (user as any).mlb_elo    ?? 1200,
-        NCAA:       (user as any).ncaa_elo   ?? 1200,
-        EPL:        (user as any).soccer_elo ?? 1200,
-        LALIGA:     (user as any).soccer_elo ?? 1200,
-        BUNDESLIGA: (user as any).soccer_elo ?? 1200,
-        SERIEA:     (user as any).soccer_elo ?? 1200,
-        WORLDCUP:   (user as any).soccer_elo ?? 1200,
-        TENNIS:     (user as any).tennis_elo ?? 1200,
+        NBA:        (user as any).nba_elo    ?? START_ELO,
+        NFL:        (user as any).nfl_elo    ?? START_ELO,
+        MLB:        (user as any).mlb_elo    ?? START_ELO,
+        NCAA:       (user as any).ncaa_elo   ?? START_ELO,
+        EPL:        (user as any).soccer_elo ?? START_ELO,
+        LALIGA:     (user as any).soccer_elo ?? START_ELO,
+        BUNDESLIGA: (user as any).soccer_elo ?? START_ELO,
+        SERIEA:     (user as any).soccer_elo ?? START_ELO,
+        WORLDCUP:   (user as any).soccer_elo ?? START_ELO,
+        TENNIS:     (user as any).tennis_elo ?? START_ELO,
       },
       xpTotal:       user.xp_total,
       totalPicks:    actualPicks,

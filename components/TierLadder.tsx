@@ -5,7 +5,8 @@
 // the active theme) aren't available — and these colours have to be clamped
 // per theme to stay legible.
 
-import { TIERS, tierRange, tierStyle } from '@/lib/tiers';
+import { TIERS, tierRange, tierStyle, tierFor } from '@/lib/tiers';
+import { START_ELO } from '@/lib/elo';
 import { useThemeStore } from '@/lib/themeStore';
 
 export default function TierLadder() {
@@ -30,7 +31,11 @@ export default function TierLadder() {
           </div>
         );
       })}
-      <p className="text-center text-[10px] text-accent font-bold mt-1">You start at Contender · 1,200</p>
+      {/* Derived, not written out: this line said "Contender · 1,200" long
+          after the engine had moved the start to 800. */}
+      <p className="text-center text-[10px] text-accent font-bold mt-1">
+        You start at {tierFor(START_ELO).label} · {START_ELO.toLocaleString()}
+      </p>
       <p className="text-center text-[11px] text-dim pt-1.5">
         Tap a team to pick. Your rating updates automatically when games end.
       </p>

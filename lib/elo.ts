@@ -114,51 +114,66 @@ export function eventEloToProb(eventElo: number): number {
 //   1. Before the pick (to show the user projected gain/loss)
 //   2. After the game (to calculate the actual Elo change)
 //
-// Two corrections live here, both aimed at the same complaint: that the board
-// only ever seemed to offer losses.
+// The one invariant this function exists to protect:
 //
-// 1. RATING_DAMPEN. Expected score was measured from the user's live rating,
-//    so climbing made every pick worse. At 1400 EVERY market probability had
-//    negative expected value — picking at exactly the market rate bled rating.
-//    That is standard Elo (you must keep beating expectations) but it made the
-//    game feel rigged. Damping halves how far the rating shifts expectations,
-//    so the penalty for being good is real but not punishing.
+//   A picker with no skill must not gain rating, whatever they pick.
 //
-// 2. PARTICIPATION_BONUS. Added to the gain and taken off the loss. This is
-//    provably neutral between favourites and underdogs:
-//        EV = p·gain − (1−p)·loss
-//           = p(K(1−E)) − (1−p)(K·E) + B
-//           = K(p − E) + B
-//    At the baseline rating E == p, so EV == B for EVERY market probability —
-//    it lifts a 15% underdog and an 85% favourite by exactly the same amount
-//    and cannot be farmed by always picking one or the other. Above baseline
-//    E > p, so the bonus erodes as you climb: a market-rate picker levels off
-//    near 1375 rather than inflating forever, and going higher still requires
-//    genuinely beating the market.
+// Write out the expected value of a single pick. The market says the chosen
+// side wins with probability p; the rating system expects it with probability
+// E. Gain is stake(1 − E), loss is stake·E, so:
 //
-// The bonus is deliberately NOT scaled by the confidence or spread multiplier.
-// Scaling it would make spread picks carry 1.35× the bonus and therefore more
-// expected value than moneyline, which would push everyone onto spreads.
+//   EV = p·stake(1 − E) − (1 − p)·stake·E
+//      = stake(p − E)
+//
+// Because impliedProbToEventElo is calibrated so that E == p at 1200, EV is
+// exactly 0 at 1200 — for EVERY p. A 15% underdog and an 85% favourite both
+// pay nothing in expectation, so "always take the favourite" and "always take
+// the dog" are equally worthless. Above 1200, E > p and the rating decays
+// toward 1200; below it, E < p and it climbs. 1200 is the market's own level,
+// and the only way past it is to actually beat the market.
+//
+// This used to carry a PARTICIPATION_BONUS of 0.12·K, added to the gain and
+// taken off the loss, to stop the board feeling like it only ever offered
+// losses. The algebra above is why that had to go: a flat bonus makes
+// EV = stake(p − E) + B, so at baseline EV == B > 0 and every account inflates
+// no matter how it picks. The house bot, which blindly picks favourites from
+// 1200, climbed ~+270 over 500 picks and so did everyone else — a zero-skill
+// favourite-picker scored about the same as a genuinely +4%-edge picker, which
+// made the whole rating meaningless. Worse, the bonus had to be capped on
+// heavy underdogs (where it would otherwise swallow the loss whole), and that
+// cap made it strategy-dependent: favourites collected the full bonus,
+// underdogs a fraction, so favourite-spamming paid ~66 Elo more per 500 picks.
+//
+// Engagement rewards belong in XP (lib/xp.ts), which is not zero-sum and can
+// be as generous as we like. Rating is zero-sum by construction; the moment it
+// pays people for showing up it stops measuring anything.
 
-/** How much of the user's distance from 1200 counts toward expectations. */
-export const RATING_DAMPEN = 0.5;
-/** Flat per-pick reward, as a fraction of K. Strategy-neutral — see above. */
-export const PARTICIPATION_BONUS = 0.12;
 /**
- * The smallest share of its fair value a loss may keep.
+ * How much of the user's distance from 1200 counts toward expectations.
  *
- * The bonus is a flat subtraction, so on a heavy underdog it would otherwise
- * swallow the loss whole — a 5%, 10% and 15% longshot all collapsed to the
- * same floor of 3, which says nothing about how big an underdog each was.
- * Capping the bonus at 60% of the fair loss keeps the number proportional to
- * the risk taken: roughly 1 / 2 / 3 / 4 / 7 / 9 across the 5%-30% band.
+ * Standard Elo would use the full distance (1.0). Shrinking it does NOT move
+ * the break-even point — that is pinned to 1200 by the E == p calibration for
+ * any value of this constant — it only weakens the restoring force, which
+ * stretches out how far genuine skill carries you above 1200.
  *
- * It also stops deep longshots being free lottery tickets. Their expected
- * value drops below the rest (about +2 at 8%, against +6 in the normal
- * range), so spamming 10% underdogs is mildly worse than picking sensibly —
- * without making underdogs unattractive generally.
+ * That stretch is the whole reason it is not 1.0. With the full distance a
+ * market-beating edge barely registers: the ladder in lib/tiers.ts would have
+ * to fit every skill level between 1200 and ~1290, so a single pick would
+ * cross a tier. Measured over 600 picks at K=20:
+ *
+ *   dampen   no skill   +4% edge   +8%   +12%   skill span   signal/noise
+ *     0.50       1204       1275   1343   1415          211           3.3
+ *     0.25       1209       1342   1477   1618          409           4.6
+ *     0.15       1213       1413   1613   1829          616           5.4
+ *
+ * Lower is better on both axes at first — the no-skill mean stays pinned near
+ * 1205 while the skill span grows — but as this approaches 0 the restoring
+ * force vanishes and the rating degenerates into an unbounded random walk with
+ * no equilibrium at all. 0.25 takes most of the available separation while
+ * keeping the pull back to 1200 firm enough that a hot streak decays over
+ * ~150 picks rather than never.
  */
-const LOSS_RETAIN = 0.4;
+export const RATING_DAMPEN = 0.25;
 
 export function calculateEloDelta({
   userElo,
@@ -188,19 +203,18 @@ export function calculateEloDelta({
   const confMult   = CONFIDENCE_MULTIPLIERS[confidenceLevel];
   const spreadMult = getSpreadMultiplier(betType);
   const stake      = kFactor * confMult * spreadMult;
-  const bonus      = kFactor * PARTICIPATION_BONUS;
 
-  // The loss the odds alone would impose, before any participation bonus.
-  const fairLoss = stake * expectedScore;
-  // Soften it, but never by more than (1 - LOSS_RETAIN) of itself.
-  const softened = Math.max(fairLoss * LOSS_RETAIN, fairLoss - bonus);
-  // Whatever the loss actually gave up is what the gain receives, so the two
-  // stay two halves of one transfer rather than drifting apart.
-  const appliedBonus = fairLoss - softened;
-
-  const projectedGain = Math.max(1, Math.round(stake * (1 - expectedScore) + appliedBonus));
+  // Two halves of one transfer: what the loss risks is what the win pays.
+  // Nothing is added to either side, which is the whole point (see above).
+  //
+  // The floor of 1 keeps a win from paying 0 on a near-certain favourite,
+  // where stake(1 - E) rounds away. It applies to the loss too, so the
+  // symmetry survives; the residual EV it leaves at the extremes is a
+  // fraction of an Elo point and the 0.01/0.99 probability clamp in
+  // impliedProbToEventElo bounds how far it can go.
+  const projectedGain = Math.max(1, Math.round(stake * (1 - expectedScore)));
   const projectedLoss = Math.min(
-    Math.max(1, Math.round(softened)),
+    Math.max(1, Math.round(stake * expectedScore)),
     Math.max(0, userElo - ELO_FLOOR),
   );
 

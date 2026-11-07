@@ -11,6 +11,7 @@ import { Sport, UserPick } from '@/types';
 import { getCurrentSeason, getDaysRemaining } from '@/lib/seasons';
 import { useDragDismiss } from '@/lib/useDragDismiss';
 import { tierStyle, nextTierProgress } from '@/lib/tiers';
+import { START_ELO } from '@/lib/elo';
 import { summarizeRecord, isSettled } from '@/lib/record';
 import { useThemeStore } from '@/lib/themeStore';
 import Icon from '@/components/Icon';
@@ -42,7 +43,9 @@ export default function EloSheet({ onClose }: { onClose: () => void }) {
 
   const resolved   = user.picks.filter((p) => isSettled(p.outcome));
   const { wins, losses, pushes, winRate } = summarizeRecord(resolved.map((p) => p.outcome));
-  const netElo     = user.globalElo - 1200;
+  // Measured from where the account began, not from 1200 — 1200 is the
+  // market's level, so subtracting it showed a brand-new player "-400".
+  const netElo     = user.globalElo - START_ELO;
   const biggestWin = resolved.reduce((max, p) => Math.max(max, p.eloDelta ?? 0), 0);
 
   const eloRank  = tierStyle(user.globalElo, theme);
