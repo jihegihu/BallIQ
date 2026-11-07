@@ -161,7 +161,7 @@ export default function LeaderboardPage() {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              className="flex-1 min-w-0 bg-card border border-rim rounded-xl px-3 py-2.5 text-sm text-ink placeholder:text-dim focus:border-accent/50 focus:outline-none"
+              className="flex-1 min-w-0 bg-card border border-rim rounded-xl px-3 py-2.5 text-base text-ink placeholder:text-dim focus:border-accent/50 focus:outline-none"
             />
             <button
               type="submit"

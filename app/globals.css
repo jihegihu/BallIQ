@@ -109,6 +109,15 @@ input, textarea, [contenteditable] {
   user-select: text;
 }
 
+/* iOS zooms the whole page into any focused field under 16px, and inside the
+   app's web view it never zooms back out. Kept unlayered on purpose so it
+   beats a `text-sm` utility on a field. */
+@media (pointer: coarse) {
+  input, textarea, select, [contenteditable] {
+    font-size: 16px;
+  }
+}
+
 /* Interactive surfaces must never begin a selection, whatever they contain. */
 button, button *, a, a *, [role='button'], [role='button'] * {
   -webkit-user-select: none !important;
