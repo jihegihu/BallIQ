@@ -12,7 +12,11 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 // before the handler ever saw it — which is exactly how signed-out phones kept
 // receiving "your picks settled". Its POST still requires a Clerk session;
 // the route enforces that itself.
-const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/profile/(.*)', '/privacy', '/terms', '/api/sync-odds(.*)', '/api/admin(.*)', '/api/push/register']);
+// /api/notify is listed WITHOUT a (.*) wildcard on purpose. It is cron-driven
+// (Bearer CRON_SECRET) so it must bypass auth.protect(), but /api/notify/prefs
+// underneath it is user-facing and has to keep its Clerk session check — a
+// wildcard here would quietly open it.
+const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/profile/(.*)', '/privacy', '/terms', '/api/sync-odds(.*)', '/api/admin(.*)', '/api/push/register', '/api/notify']);
 
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {

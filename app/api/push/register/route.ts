@@ -8,12 +8,22 @@ import { auth } from '@clerk/nextjs/server';
 import { createAdminClient } from '@/lib/supabase';
 import { getOrCreateUser } from '@/lib/getOrCreateUser';
 
+function validTimezone(tz: unknown): tz is string {
+  if (typeof tz !== 'string' || tz.length === 0 || tz.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   const { userId: clerkId } = await auth();
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { token, platform } = await req.json().catch(() => ({})) as {
-    token?: string; platform?: string;
+  const { token, platform, timezone } = await req.json().catch(() => ({})) as {
+    token?: string; platform?: string; timezone?: string;
   };
   if (!token || typeof token !== 'string') {
     return NextResponse.json({ error: 'token required' }, { status: 400 });
@@ -25,7 +35,17 @@ export async function POST(req: Request) {
   // token is the primary key — re-registering the same device (or moving it to
   // a new account) overwrites the owner rather than erroring.
   const { error } = await admin.from('push_tokens').upsert(
-    { token, user_id: me, platform: platform ?? 'ios', updated_at: new Date().toISOString() },
+    {
+      token,
+      user_id: me,
+      platform: platform ?? 'ios',
+      // Drives when the daily notifications land (lib/notifyWindow.ts). Client
+      // input, so it is validated rather than trusted: a bogus zone would make
+      // Intl throw inside the cron and take the whole run down with it. null
+      // falls back to Eastern.
+      timezone: validTimezone(timezone) ? timezone : null,
+      updated_at: new Date().toISOString(),
+    },
     { onConflict: 'token' },
   );
 

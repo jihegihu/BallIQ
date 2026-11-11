@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { summarizeRecord, isSettled } from '@/lib/record';
 import Link from 'next/link';
 import { useUser, useClerk } from '@clerk/nextjs';
@@ -17,6 +17,34 @@ export default function AccountPage() {
   const user                          = useUserStore((s) => s.user);
   const { theme, setTheme }           = useThemeStore();
   const openOnboarding                = useOnboardingStore((s) => s.open);
+
+  // null while we don't yet know — the control renders disabled rather than
+  // guessing "on" and flipping under the user a moment later.
+  const [notifyOn, setNotifyOn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/notify/prefs')
+      .then((r) => r.json())
+      .then((d) => { if (alive && typeof d.enabled === 'boolean') setNotifyOn(d.enabled); })
+      .catch(() => { /* leave the control disabled rather than lie about state */ });
+    return () => { alive = false; };
+  }, []);
+
+  async function setNotifications(next: boolean) {
+    const prev = notifyOn;
+    setNotifyOn(next);                       // optimistic
+    try {
+      const res = await fetch('/api/notify/prefs', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setNotifyOn(prev);                     // put the switch back; nothing saved
+    }
+  }
 
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting]     = useState(false);
@@ -138,6 +166,37 @@ export default function AccountPage() {
                 <span className="inline-flex items-center justify-center gap-1.5">
                   <Icon name={t === 'dark' ? 'moon' : 'sun'} size={14} />{t === 'dark' ? 'Dark' : 'Light'}
                 </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Same segmented control as Theme above, deliberately — one control
+            type in this card rather than a switch next to a pair of buttons. */}
+        <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t border-rim">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-ink">Notifications</p>
+            <p className="text-[11px] text-dim mt-0.5">
+              {notifyOn === null
+                ? 'Checking…'
+                : notifyOn
+                  ? 'A big game to decide, and how your day went'
+                  : 'Off — nothing will be sent'}
+            </p>
+          </div>
+          <div className="flex bg-layer rounded-xl p-1 gap-1 shrink-0">
+            {([true, false] as const).map((on) => (
+              <button
+                key={String(on)}
+                disabled={notifyOn === null}
+                onClick={() => setNotifications(on)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all disabled:opacity-40 ${
+                  notifyOn === on
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'text-dim hover:text-sub'
+                }`}
+              >
+                {on ? 'On' : 'Off'}
               </button>
             ))}
           </div>

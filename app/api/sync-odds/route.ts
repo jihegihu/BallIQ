@@ -9,7 +9,6 @@ import { fetchOdds, fetchScores, CompletedGame, OddsQuotaError } from '@/lib/odd
 import { fetchGameDetails, fetchEspnScores } from '@/lib/espn';
 import { createAdminClient } from '@/lib/supabase';
 import { checkCronAuth } from '@/lib/cronAuth';
-import { sendApnsPush } from '@/lib/apns';
 import { calculateEloDelta, getKFactor, START_ELO } from '@/lib/elo';
 import { Match, BetType, ConfidenceLevel, Sport } from '@/types';
 
@@ -534,40 +533,18 @@ async function runSync(fullSweep = false) {
         resolved = allUpdates.length;
       }
 
-      // ── 2b. Push "your picks settled" to each affected user ─────────────────
-      // Best-effort: a push failure must never block sync. No-ops when APNs env
-      // vars are unset (e.g. before the iOS build ships).
-      if (notifications.length > 0) {
-        try {
-          const userIds = notifications.map((n) => n.userId);
-          const { data: tokenRows } = await admin
-            .from('push_tokens')
-            .select('token, user_id')
-            .in('user_id', userIds);
-
-          const tokensByUser = new Map<string, string[]>();
-          for (const r of tokenRows ?? []) {
-            const uid = r.user_id as string;
-            const list = tokensByUser.get(uid) ?? [];
-            list.push(r.token as string);
-            tokensByUser.set(uid, list);
-          }
-
-          const dead: string[] = [];
-          for (const n of notifications) {
-            const tokens = tokensByUser.get(n.userId);
-            if (!tokens || tokens.length === 0) continue;
-            const up    = n.net >= 0;
-            const title = up ? `▲ +${n.net} Elo` : `▼ ${n.net} Elo`;
-            const body  = `${n.wins}W–${n.losses}L — your picks settled. Tap to see how you did.`;
-            const res   = await sendApnsPush(tokens, { title, body });
-            dead.push(...res.invalidTokens);
-          }
-          if (dead.length > 0) await admin.from('push_tokens').delete().in('token', dead);
-        } catch (err) {
-          console.warn('[sync-odds] push notify failed:', (err as Error).message);
-        }
-      }
+      // ── 2b. Settlement notifications ────────────────────────────────────────
+      // Deliberately NOT sent from here any more.
+      //
+      // This used to push "your picks settled" the moment a sync graded
+      // anything. With the cron running 16 times a day, an active user could
+      // be paged a dozen times in an evening, each one a fragment of the same
+      // story. /api/notify now rolls them into one end-of-day digest, keyed
+      // on each device's own local clock, which also leaves room for the
+      // big-game nudge without the daily total going past two.
+      //
+      // `notifications` is still assembled above: the counts it carries are
+      // what this endpoint reports back. Nothing here consumes it.
     }
   }
 

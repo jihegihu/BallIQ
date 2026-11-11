@@ -23,6 +23,15 @@ import { useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { rememberToken, storedToken, unregisterDevice } from '@/lib/pushDevice';
 
+/** IANA zone name, e.g. 'America/Denver'. undefined if the engine won't say. */
+function deviceTimezone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function PushRegistrar() {
   const { isLoaded, isSignedIn } = useUser();
 
@@ -59,7 +68,14 @@ export default function PushRegistrar() {
           fetch('/api/push/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: token.value, platform: Capacitor.getPlatform() }),
+            body: JSON.stringify({
+              token: token.value,
+              platform: Capacitor.getPlatform(),
+              // The handset is the only thing that knows where it is, and the
+              // daily notifications are sent on local time. Re-sent on every
+              // launch, so moving timezone fixes itself without any prompt.
+              timezone: deviceTimezone(),
+            }),
           }).catch(() => { /* offline — the next launch re-registers */ });
         });
 
