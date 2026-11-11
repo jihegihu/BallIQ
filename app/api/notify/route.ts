@@ -22,8 +22,13 @@ import { checkCronAuth } from '@/lib/cronAuth';
 import { sendApnsPush } from '@/lib/apns';
 import { dueKinds, type NotifyKind } from '@/lib/notifyWindow';
 import { scoreGames, matchupLabel, type ScorableGame } from '@/lib/bigGame';
+import { bigGameMessage, digestMessage } from '@/lib/notifyCopy';
 import { isLocked } from '@/lib/lock';
 import { summarizeRecord } from '@/lib/record';
+import {
+  calculateEloDelta, getKFactor, impliedProbToEventElo,
+  americanOddsToImpliedProb, removeVig, START_ELO,
+} from '@/lib/elo';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -63,9 +68,11 @@ export async function GET(req: NextRequest) {
 
   // The master switch, honoured here rather than at send time so an opted-out
   // user costs us no further queries.
+  // total_picks / weeks_active come along because the big-game nudge quotes
+  // the Elo this user would actually win, which needs their K factor.
   const { data: userRows } = await admin
     .from('users')
-    .select('id, username, global_elo, notifications_enabled')
+    .select('id, username, global_elo, total_picks, weeks_active, notifications_enabled')
     .in('id', [...new Set(tokens.map((t) => t.user_id))]);
 
   const enabled = new Map(
@@ -78,17 +85,19 @@ export async function GET(req: NextRequest) {
   // Keyed per user rather than per token: two phones in different timezones
   // both get it, but the once-per-day ledger is per account, so whichever
   // device's clock reaches the slot first claims the day for that account.
-  type Job = { userId: string; kind: NotifyKind; localDay: string; tokens: string[] };
+  type Job = { userId: string; kind: NotifyKind; localDay: string; zone: string; tokens: string[] };
   const jobs = new Map<string, Job>();
 
   for (const t of tokens) {
     if (!enabled.has(t.user_id)) continue;
-    const { day, due } = dueKinds(t.timezone, now);
+    // `zone` is carried so kick-off times are written in the clock the reader
+    // is holding, not the server's.
+    const { day, due, zone } = dueKinds(t.timezone, now);
     for (const kind of due) {
       const key = `${t.user_id}|${kind}|${day}`;
       const existing = jobs.get(key);
       if (existing) existing.tokens.push(t.token);
-      else jobs.set(key, { userId: t.user_id, kind, localDay: day, tokens: [t.token] });
+      else jobs.set(key, { userId: t.user_id, kind, localDay: day, zone, tokens: [t.token] });
     }
   }
 
@@ -160,14 +169,37 @@ export async function GET(req: NextRequest) {
       // claim here silently cost the user the whole day's nudge.
       if (!top) { await release(admin, job); skipped++; continue; }
 
-      const kick = new Date(top.game.commence_time).getTime();
-      const hrs = Math.max(1, Math.round((kick - now.getTime()) / 3600_000));
-      const when = hrs <= 1 ? 'starts within the hour' : `starts in ${hrs}h`;
+      // What this pick is worth at best, for THIS user's rating and K. Both
+      // sides are priced and the larger taken: the underdog always pays more,
+      // and "up to" states that without printing the odds.
+      const u = enabled.get(job.userId);
+      const elo = (u?.global_elo as number) ?? START_ELO;
+      const k = getKFactor((u?.total_picks as number) ?? 0, (u?.weeks_active as number) ?? 1);
+      const { probA, probB } = removeVig(
+        americanOddsToImpliedProb(top.game.moneyline_home as number),
+        americanOddsToImpliedProb(top.game.moneyline_away as number),
+      );
+      const gainFor = (p: number) => calculateEloDelta({
+        userElo: elo,
+        eventElo: impliedProbToEventElo(p),
+        kFactor: k,
+        confidenceLevel: 'medium',
+        betType: 'moneyline',
+        outcome: 'win',
+      }).projectedGain;
+      const maxGain = Math.max(gainFor(probA), gainFor(probB));
+
+      const msg = bigGameMessage({
+        matchup: matchupLabel(top.game),
+        maxGain,
+        commenceTime: top.game.commence_time,
+        zone: job.zone,
+        now,
+      });
 
       const res = await sendApnsPush(job.tokens, {
-        title: `Tonight: ${matchupLabel(top.game)}`,
-        body:  `${top.game.sport} — ${when}. Make your call before it locks.`,
-        data:  { kind: 'big_game', matchId: top.game.id },
+        ...msg,
+        data: { kind: 'big_game', matchId: top.game.id },
       });
       dead.push(...res.invalidTokens);
       sentBigGame++;
@@ -209,24 +241,21 @@ export async function GET(req: NextRequest) {
 
       // Nothing settled and no rank change — say nothing rather than send an
       // empty "0W-0L" that trains people to ignore the app.
-      if (rows.length === 0 && !movement) {
+      if (rows.length === 0 && !movement.moved) {
         await release(admin, job);
         skipped++;
         continue;
       }
 
-      const title = rows.length === 0
-        ? (me ? `You are #${me.rank}` : 'Standings moved')
-        : `${net >= 0 ? '+' : ''}${net} Elo today`;
-
-      const parts: string[] = [];
-      if (rows.length > 0) parts.push(`${wins}W-${losses}L`);
-      if (me) parts.push(`#${me.rank} overall`);
-      if (movement) parts.push(movement);
+      const msg = digestMessage({
+        wins, losses, net,
+        rank: me?.rank ?? null,
+        prevRank: movement.prevRank,
+        settledCount: rows.length,
+      });
 
       const res = await sendApnsPush(job.tokens, {
-        title,
-        body: parts.join(' · ') || 'Tap to see where you stand.',
+        ...msg,
         data: { kind: 'daily_digest' },
       });
       dead.push(...res.invalidTokens);
@@ -292,8 +321,8 @@ async function rankMovement(
   userId: string,
   rank: number | null,
   day: string,
-): Promise<string | null> {
-  if (rank == null) return null;
+): Promise<{ prevRank: number | null; moved: boolean }> {
+  if (rank == null) return { prevRank: null, moved: false };
 
   const { data: prev } = await admin
     .from('rank_snapshots')
@@ -303,7 +332,7 @@ async function rankMovement(
     .order('day', { ascending: false })
     .limit(1);
 
-  const before = prev?.[0]?.rank as number | undefined;
+  const before = (prev?.[0]?.rank as number | undefined) ?? null;
 
   const { data: elo } = await admin.from('users').select('global_elo').eq('id', userId).single();
   await admin.from('rank_snapshots').upsert(
@@ -311,9 +340,7 @@ async function rankMovement(
     { onConflict: 'user_id,day' },
   );
 
-  if (before == null || before === rank) return null;
-  const places = Math.abs(before - rank);
-  const noun = places === 1 ? 'place' : 'places';
-  // Lower rank number is better.
-  return rank < before ? `up ${places} ${noun}` : `down ${places} ${noun}`;
+  // Returns the raw previous rank rather than a phrase: wording belongs in
+  // lib/notifyCopy.ts, where it can be read and tested without a database.
+  return { prevRank: before, moved: before != null && before !== rank };
 }
