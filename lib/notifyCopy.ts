@@ -100,11 +100,14 @@ export function digestMessage(opts: {
   const places = moved ? Math.abs((prevRank as number) - rank) : 0;
   const up = moved && rank < (prevRank as number);
 
+  // "globally" is doing real work: the plan is to switch this to a friends
+  // standing once there is a crowd, and "#4" alone would quietly change
+  // meaning the day that happens.
   const title = moved
     // Lower rank number is better, so a smaller number is a climb.
-    ? (up ? `Up ${places} to #${rank}` : `Down ${places} to #${rank}`)
+    ? (up ? `Up ${places} to #${rank} globally` : `Down ${places} to #${rank} globally`)
     : rank != null
-      ? `#${rank} overall`
+      ? `#${rank} globally`
       : `${net >= 0 ? '+' : ''}${net} Elo today`;
 
   // Rank can move without the user playing, when everyone else does. "0W-0L"
