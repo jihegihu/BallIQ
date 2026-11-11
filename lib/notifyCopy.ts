@@ -56,6 +56,42 @@ export function bigGameMessage(opts: {
 }
 
 /**
+ * Results, while they are still news.
+ *
+ * Deliberately not a copy of the digest. This one is about what just
+ * happened — no rank, no standing, because those are the digest's job and
+ * repeating them is what makes a stream of notifications feel like noise.
+ *
+ * A single settled pick gets named as such ("Your pick landed") since "1W-0L"
+ * for one result reads like a box score of nothing.
+ */
+export function settledMessage(opts: {
+  wins: number;
+  losses: number;
+  pushes: number;
+  net: number;
+}): Message {
+  const { wins, losses, pushes, net } = opts;
+  const decided = wins + losses;
+  const sign = net >= 0 ? '+' : '';
+
+  if (decided === 1 && pushes === 0) {
+    return {
+      title: wins === 1 ? 'Your pick landed' : 'That one got away',
+      body:  `${sign}${net} Elo.`,
+    };
+  }
+
+  const counted = [`${wins}W–${losses}L`];
+  if (pushes > 0) counted.push(`${pushes} push${pushes > 1 ? 'es' : ''}`);
+
+  return {
+    title: `${sign}${net} Elo`,
+    body:  `${counted.join(', ')} just settled.`,
+  };
+}
+
+/**
  * The end-of-day digest.
  *
  * The title is the competitive news — where you moved globally — because that

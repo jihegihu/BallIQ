@@ -20,9 +20,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
 import { checkCronAuth } from '@/lib/cronAuth';
 import { sendApnsPush } from '@/lib/apns';
-import { dueKinds, type NotifyKind } from '@/lib/notifyWindow';
+import { dueKinds, SETTLED_GAP_HOURS, type NotifyKind } from '@/lib/notifyWindow';
 import { scoreGames, matchupLabel, type ScorableGame } from '@/lib/bigGame';
-import { bigGameMessage, digestMessage } from '@/lib/notifyCopy';
+import { bigGameMessage, digestMessage, settledMessage } from '@/lib/notifyCopy';
 import { isLocked } from '@/lib/lock';
 import { summarizeRecord } from '@/lib/record';
 import {
@@ -85,7 +85,10 @@ export async function GET(req: NextRequest) {
   // Keyed per user rather than per token: two phones in different timezones
   // both get it, but the once-per-day ledger is per account, so whichever
   // device's clock reaches the slot first claims the day for that account.
-  type Job = { userId: string; kind: NotifyKind; localDay: string; zone: string; tokens: string[] };
+  type Job = {
+    userId: string; kind: NotifyKind; localDay: string; slot: number;
+    zone: string; tokens: string[];
+  };
   const jobs = new Map<string, Job>();
 
   for (const t of tokens) {
@@ -93,11 +96,11 @@ export async function GET(req: NextRequest) {
     // `zone` is carried so kick-off times are written in the clock the reader
     // is holding, not the server's.
     const { day, due, zone } = dueKinds(t.timezone, now);
-    for (const kind of due) {
-      const key = `${t.user_id}|${kind}|${day}`;
+    for (const { kind, slot } of due) {
+      const key = `${t.user_id}|${kind}|${day}|${slot}`;
       const existing = jobs.get(key);
       if (existing) existing.tokens.push(t.token);
-      else jobs.set(key, { userId: t.user_id, kind, localDay: day, zone, tokens: [t.token] });
+      else jobs.set(key, { userId: t.user_id, kind, localDay: day, slot, zone, tokens: [t.token] });
     }
   }
 
@@ -114,17 +117,17 @@ export async function GET(req: NextRequest) {
   const claimed: Job[] = [];
   for (const job of jobs.values()) {
     const { error } = await admin.from('notification_log').insert({
-      user_id: job.userId, kind: job.kind, local_day: job.localDay,
+      user_id: job.userId, kind: job.kind, local_day: job.localDay, slot: job.slot,
     });
     if (!error) claimed.push(job);
   }
 
   if (claimed.length === 0) {
-    return NextResponse.json({ ok: true, reason: 'every due slot already sent today' });
+    return NextResponse.json({ ok: true, reason: 'every due slot is already claimed' });
   }
 
   const dead: string[] = [];
-  let sentBigGame = 0, sentDigest = 0, skipped = 0;
+  let sentBigGame = 0, sentDigest = 0, sentSettled = 0, skipped = 0;
 
   // ── big_game: one unpicked game worth deciding on ───────────────────────────
   const bigGameJobs = claimed.filter((j) => j.kind === 'big_game');
@@ -206,6 +209,47 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── settled: results, while they are still news ─────────────────────────────
+  // The 3-hour bucket in the ledger key is what throttles this; by the time we
+  // are here the slot is already won, so all that remains is "has anything
+  // actually settled since last time".
+  const settledJobs = claimed.filter((j) => j.kind === 'settled');
+  if (settledJobs.length > 0) {
+    const prior = await priorSends(admin, 'settled', settledJobs.map((j) => j.userId));
+
+    for (const job of settledJobs) {
+      // Falls back to the gap rather than the whole day: on the first send of
+      // a day this must not sweep up last night's results and present them as
+      // if they just happened.
+      const since = previousSend(prior, job.userId)
+        ?? new Date(now.getTime() - SETTLED_GAP_HOURS * 3600_000).toISOString();
+
+      const { data: settled } = await admin
+        .from('user_picks')
+        .select('outcome, elo_delta')
+        .eq('user_id', job.userId)
+        .neq('outcome', 'pending')
+        .gt('resolved_at', since);
+
+      const rows = settled ?? [];
+      if (rows.length === 0) { await release(admin, job); skipped++; continue; }
+
+      const net = rows.reduce((s, p) => s + ((p.elo_delta as number) ?? 0), 0);
+      const { wins, losses, pushes } = summarizeRecord(rows.map((p) => p.outcome as string));
+
+      // Everything in the batch was a push: no rating moved, so there is
+      // nothing worth interrupting anyone for.
+      if (wins + losses === 0) { await release(admin, job); skipped++; continue; }
+
+      const res = await sendApnsPush(job.tokens, {
+        ...settledMessage({ wins, losses, pushes, net }),
+        data: { kind: 'settled' },
+      });
+      dead.push(...res.invalidTokens);
+      sentSettled++;
+    }
+  }
+
   // ── daily_digest: how today went, and where you now rank ────────────────────
   const digestJobs = claimed.filter((j) => j.kind === 'daily_digest');
   if (digestJobs.length > 0) {
@@ -213,17 +257,11 @@ export async function GET(req: NextRequest) {
     // that tips at 10:30pm settles after the digest has gone, and a
     // calendar-day window would never mention it at all; this way it simply
     // lands in tomorrow's.
-    const { data: prior } = await admin
-      .from('notification_log')
-      .select('user_id, sent_at')
-      .eq('kind', 'daily_digest')
-      .in('user_id', digestJobs.map((j) => j.userId))
-      .order('sent_at', { ascending: false });
-
+    const prior = await priorSends(admin, 'daily_digest', digestJobs.map((j) => j.userId));
     const rank = await currentRanks(admin);
 
     for (const job of digestJobs) {
-      const since = previousSend(prior ?? [], job.userId) ?? new Date(now.getTime() - 86_400_000).toISOString();
+      const since = previousSend(prior, job.userId) ?? new Date(now.getTime() - 86_400_000).toISOString();
 
       const { data: settled } = await admin
         .from('user_picks')
@@ -270,6 +308,7 @@ export async function GET(req: NextRequest) {
     due: jobs.size,
     claimed: claimed.length,
     sentBigGame,
+    sentSettled,
     sentDigest,
     skipped,
     prunedTokens: dead.length,
@@ -282,16 +321,41 @@ export async function GET(req: NextRequest) {
  * other half of it — without a release, "nothing to say right now" becomes
  * "nothing to say all day".
  */
-async function release(admin: Admin, job: { userId: string; kind: NotifyKind; localDay: string }) {
+async function release(
+  admin: Admin,
+  job: { userId: string; kind: NotifyKind; localDay: string; slot: number },
+) {
   await admin.from('notification_log')
     .delete()
     .eq('user_id', job.userId)
     .eq('kind', job.kind)
-    .eq('local_day', job.localDay);
+    .eq('local_day', job.localDay)
+    // Matching the slot matters: 'settled' has several rows per day, and
+    // without this, releasing one empty bucket would delete the claims of
+    // buckets that had already sent — and let them all fire again.
+    .eq('slot', job.slot);
 }
 
-/** Second-newest digest timestamp for a user — the one before this run's claim. */
-function previousSend(rows: { user_id: string; sent_at: string }[], userId: string): string | null {
+type SentRow = { user_id: string; sent_at: string };
+
+/** Ledger rows for a kind, newest first — includes this run's own claims. */
+async function priorSends(admin: Admin, kind: NotifyKind, userIds: string[]): Promise<SentRow[]> {
+  const { data } = await admin
+    .from('notification_log')
+    .select('user_id, sent_at')
+    .eq('kind', kind)
+    .in('user_id', userIds)
+    .order('sent_at', { ascending: false });
+  return (data ?? []) as SentRow[];
+}
+
+/**
+ * Second-newest timestamp for a user — the send before this run's claim.
+ *
+ * The claim is inserted before any of this runs, so the newest row is always
+ * our own; the one behind it is the real watermark.
+ */
+function previousSend(rows: SentRow[], userId: string): string | null {
   const mine = rows.filter((r) => r.user_id === userId);
   return mine.length >= 2 ? mine[1].sent_at : null;
 }
