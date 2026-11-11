@@ -154,7 +154,11 @@ export async function GET(req: NextRequest) {
     for (const job of bigGameJobs) {
       const already = mine.get(job.userId) ?? new Set<string>();
       const top = ranked.find((r) => !already.has(r.game.id));
-      if (!top) { skipped++; continue; }
+      // Nothing worth sending: no open game, or they have picked them all.
+      // Release the claim — the window spans 17:00-19:59 and an 18h horizon
+      // slides forward, so a later tick today may well find one. Holding the
+      // claim here silently cost the user the whole day's nudge.
+      if (!top) { await release(admin, job); skipped++; continue; }
 
       const kick = new Date(top.game.commence_time).getTime();
       const hrs = Math.max(1, Math.round((kick - now.getTime()) / 3600_000));
@@ -206,9 +210,7 @@ export async function GET(req: NextRequest) {
       // Nothing settled and no rank change — say nothing rather than send an
       // empty "0W-0L" that trains people to ignore the app.
       if (rows.length === 0 && !movement) {
-        await admin.from('notification_log')
-          .delete()
-          .eq('user_id', job.userId).eq('kind', 'daily_digest').eq('local_day', job.localDay);
+        await release(admin, job);
         skipped++;
         continue;
       }
@@ -243,6 +245,20 @@ export async function GET(req: NextRequest) {
     skipped,
     prunedTokens: dead.length,
   });
+}
+
+/**
+ * Give a claimed slot back, so a later tick inside the same window can try
+ * again. Claiming before sending is what stops a double-send; this is the
+ * other half of it — without a release, "nothing to say right now" becomes
+ * "nothing to say all day".
+ */
+async function release(admin: Admin, job: { userId: string; kind: NotifyKind; localDay: string }) {
+  await admin.from('notification_log')
+    .delete()
+    .eq('user_id', job.userId)
+    .eq('kind', job.kind)
+    .eq('local_day', job.localDay);
 }
 
 /** Second-newest digest timestamp for a user — the one before this run's claim. */
