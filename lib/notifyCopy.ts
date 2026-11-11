@@ -30,7 +30,7 @@ function whenPhrase(commenceTime: string, zone: string, now: Date): string {
     timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(d);
 
-  return dayOf(kick) === dayOf(now) ? `tips ${time}` : `tips tomorrow, ${time}`;
+  return dayOf(kick) === dayOf(now) ? `Tips ${time}` : `Tips tomorrow ${time}`;
 }
 
 /**
@@ -51,19 +51,15 @@ export function bigGameMessage(opts: {
   const { matchup, maxGain, commenceTime, zone, now = new Date() } = opts;
   return {
     title: matchup,
-    body: `Up to +${maxGain} Elo. Pick your winner — ${whenPhrase(commenceTime, zone, now)}.`,
+    body: `Up to +${maxGain} Elo. Pick your winner. ${whenPhrase(commenceTime, zone, now)}.`,
   };
 }
 
 /**
- * Results, while they are still news.
+ * Results, as soon as they are in.
  *
- * Deliberately not a copy of the digest. This one is about what just
- * happened — no rank, no standing, because those are the digest's job and
- * repeating them is what makes a stream of notifications feel like noise.
- *
- * A single settled pick gets named as such ("Your pick landed") since "1W-0L"
- * for one result reads like a box score of nothing.
+ * No rank or standing: that is the digest's job, and repeating it is what
+ * turns a stream of notifications into noise.
  */
 export function settledMessage(opts: {
   wins: number;
@@ -72,22 +68,12 @@ export function settledMessage(opts: {
   net: number;
 }): Message {
   const { wins, losses, pushes, net } = opts;
-  const decided = wins + losses;
-  const sign = net >= 0 ? '+' : '';
-
-  if (decided === 1 && pushes === 0) {
-    return {
-      title: wins === 1 ? 'Your pick landed' : 'That one got away',
-      body:  `${sign}${net} Elo.`,
-    };
-  }
-
-  const counted = [`${wins}W–${losses}L`];
-  if (pushes > 0) counted.push(`${pushes} push${pushes > 1 ? 'es' : ''}`);
+  const line = [`${wins}W–${losses}L`];
+  if (pushes > 0) line.push(`${pushes} push${pushes > 1 ? 'es' : ''}`);
 
   return {
-    title: `${sign}${net} Elo`,
-    body:  `${counted.join(', ')} just settled.`,
+    title: `${net >= 0 ? '+' : ''}${net} Elo`,
+    body:  line.join(', '),
   };
 }
 
@@ -121,11 +107,11 @@ export function digestMessage(opts: {
       ? `#${rank} overall`
       : `${net >= 0 ? '+' : ''}${net} Elo today`;
 
-  // Rank can move without the user playing, when everyone else does. Saying
-  // "0W-0L" there reads as a failure; naming it plainly is a better nudge.
+  // Rank can move without the user playing, when everyone else does. "0W-0L"
+  // there reads as a failure they did not commit.
   const body = settledCount === 0
-    ? 'No picks settled today.'
-    : `${wins}W–${losses}L today, ${net >= 0 ? '+' : ''}${net} Elo.`;
+    ? 'No picks settled'
+    : `${wins}W–${losses}L, ${net >= 0 ? '+' : ''}${net} Elo`;
 
   return { title, body };
 }
