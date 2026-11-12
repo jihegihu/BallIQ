@@ -115,15 +115,27 @@ export async function GET(req: NextRequest) {
   // cost of the reverse would be sending twice, which users notice and
   // uninstall over. Skipping is the better failure.
   const claimed: Job[] = [];
+  let blocked: string | null = null;
   for (const job of jobs.values()) {
     const { error } = await admin.from('notification_log').insert({
       user_id: job.userId, kind: job.kind, local_day: job.localDay, slot: job.slot,
     });
-    if (!error) claimed.push(job);
+    if (!error) { claimed.push(job); continue; }
+    // 23505 is a unique-violation: the slot really was taken, which is the
+    // mechanism working. Anything else means the insert itself is broken —
+    // a missing column, say — and must not be mistaken for it. Reporting
+    // "already claimed" for a schema error produced a green response while
+    // nothing could ever send, which is how this went unnoticed for a day.
+    if (error.code !== '23505') blocked = error.message;
   }
 
   if (claimed.length === 0) {
-    return NextResponse.json({ ok: true, reason: 'every due slot is already claimed' });
+    return blocked
+      ? NextResponse.json(
+          { ok: false, error: blocked, hint: 'has supabase/migration-008-settled-slots.sql been run?' },
+          { status: 500 },
+        )
+      : NextResponse.json({ ok: true, reason: 'every due slot is already claimed' });
   }
 
   const dead: string[] = [];
