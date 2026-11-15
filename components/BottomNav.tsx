@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { hapticImpact } from '@/lib/haptics';
+import { useTourStore } from '@/lib/tourStore';
 
 function NavIcon({ type, active }: { type: string; active: boolean }) {
   const cls = `w-[22px] h-[22px] transition-colors ${active ? 'text-accent' : 'text-dim'}`;
@@ -54,14 +55,17 @@ const NAV_ITEMS = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  // The walkthrough chooses the screen until it finishes.
+  const touring = useTourStore((s) => s.active);
 
   return (
     <nav
+      aria-hidden={touring || undefined}
       className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-rim"
       // paddingBottom keeps the tabs above the iPhone home-indicator area
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex max-w-md mx-auto h-16">
+      <div className={`flex max-w-md mx-auto h-16 ${touring ? 'pointer-events-none opacity-40' : ''}`}>
         {NAV_ITEMS.map(({ href, label, type }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
           return (

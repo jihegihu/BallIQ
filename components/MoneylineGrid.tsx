@@ -16,6 +16,8 @@ import LiveStrip from '@/components/LiveStrip';
 import { useLiveScores } from '@/lib/useLiveScores';
 import Icon from '@/components/Icon';
 import { isLocked } from '@/lib/lock';
+import { useTourStore } from '@/lib/tourStore';
+import TourSportPicker from '@/components/TourSportPicker';
 
 // Hook-per-card wrapper (hooks can't be called inside .map). Long-pressing
 // the card chrome opens the full BetSheet with a haptic thump.
@@ -70,7 +72,16 @@ function fmtTime(iso: string) {
 }
 
 export default function MoneylineGrid({ matches }: { matches: Match[] }) {
-  const [sport, setSport]           = useState<SportFilter>('ALL');
+  const [chosenSport, setSport]     = useState<SportFilter>('ALL');
+
+  // During the walkthrough's pick step the board shows only the sport the
+  // new user chose. Derived rather than copied into state, so the moment the
+  // walkthrough ends the filter is simply the user's own again.
+  const tourActive = useTourStore((s) => s.active);
+  const tourStep   = useTourStore((s) => s.step);
+  const tourSport  = useTourStore((s) => s.sport);
+  const pinned: SportFilter | null = tourActive && tourStep === 'picks' && tourSport ? tourSport : null;
+  const sport: SportFilter = pinned ?? chosenSport;
   const [sheetMatch, setSheetMatch] = useState<Match | null>(null);
 
   const user       = useUserStore((s) => s.user);
@@ -175,6 +186,8 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
         )}
       </div>
 
+      <TourSportPicker matches={upcoming} />
+
       <RecapBanner />
 
       {/* Sport filter — larger type now that the header block is gone */}
@@ -182,8 +195,11 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
         {FILTERS.map((s) => (
           <button
             key={s}
+            // Locked while the walkthrough has the board pinned; it offers
+            // its own "Change sport".
+            disabled={pinned !== null}
             onClick={() => { hapticImpact('light'); setSport(s); }}
-            className={`shrink-0 py-2.5 px-5 rounded-xl text-sm font-black tracking-wide transition active:scale-95 ${
+            className={`shrink-0 py-2.5 px-5 rounded-xl text-sm font-black tracking-wide transition active:scale-95 disabled:opacity-50 ${
               sport === s
                 ? 'bg-accent text-white shadow-lg shadow-accent/20'
                 : 'bg-card text-sub border border-rim hover:border-sub'

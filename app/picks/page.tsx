@@ -11,6 +11,8 @@ import { summarizeRecord } from '@/lib/record';
 import { PICK_LABEL } from '@/lib/pickLabels';
 import { StatTile, BreakdownRow } from '@/components/StatPieces';
 import EloSparkline from '@/components/EloSparkline';
+import { useTourStore } from '@/lib/tourStore';
+import { ExampleStats, ExampleResultsLabel, EXAMPLE_RESULTS } from '@/components/TourExamples';
 import Icon from '@/components/Icon';
 
 type Tab = 'pending' | 'results';
@@ -66,7 +68,15 @@ type MatchScore = {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PicksPage() {
-  const [tab, setTab]                   = useState<Tab>('pending');
+  const [tabState, setTab]              = useState<Tab>('pending');
+
+  // The walkthrough shows Pending, then Results. Derived, not copied into
+  // state, so the tab is the user's own again the moment it ends.
+  const tourActive = useTourStore((s) => s.active);
+  const tourStep   = useTourStore((s) => s.step);
+  const tab: Tab =
+    tourActive && tourStep === 'pending' ? 'pending' :
+    tourActive && tourStep === 'results' ? 'results' : tabState;
   const [matchScores, setMatchScores]   = useState<Record<string, MatchScore>>({});
   const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(new Set());
   const [statsOpen, setStatsOpen]       = useState(false);
@@ -192,6 +202,10 @@ export default function PicksPage() {
     );
   }
 
+  // A new account has nothing settled, so the results stop would be an empty
+  // state. Show labelled examples there instead, only until real ones exist.
+  const showExamples = tourActive && tourStep === 'results' && results.length === 0;
+
   return (
     <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
       <h1 className="text-2xl font-black text-ink mb-4">My Picks</h1>
@@ -295,6 +309,8 @@ export default function PicksPage() {
           nothing when the user has no tournament picks at all. */}
       {results.length === 0 && <TournamentRecaps picks={user.picks} />}
 
+      {showExamples && <ExampleStats />}
+
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <div className="flex gap-2 mb-5">
         {([['pending', `Pending${pending.length > 0 ? ` (${pending.length})` : ''}`], ['results', 'Results']] as [Tab, string][]).map(([key, label]) => (
@@ -336,7 +352,16 @@ export default function PicksPage() {
         )
       )}
 
-      {tab === 'results' && (
+      {tab === 'results' && showExamples && (
+        <div>
+          <ExampleResultsLabel />
+          <div className="flex flex-col gap-2">
+            {EXAMPLE_RESULTS.map((p) => <ResultCard key={p.id} pick={p} />)}
+          </div>
+        </div>
+      )}
+
+      {tab === 'results' && !showExamples && (
         results.length === 0 ? (
           <div className="text-center py-16">
             <Icon name="barChart" size={40} strokeWidth={1.25} className="mx-auto mb-3 text-dim" />

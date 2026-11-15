@@ -6,6 +6,7 @@ import Icon, { type IconName } from '@/components/Icon';
 import TierStanding, { type Standing } from '@/components/TierStanding';
 import { tierFor } from '@/lib/tiers';
 import CreatorBadge from '@/components/CreatorBadge';
+import { useTourStore } from '@/lib/tourStore';
 
 type Scope = 'global' | 'friends';
 /** What the page is showing. 'climb' is a view, not a server scope: the API
@@ -52,7 +53,13 @@ const ELO_KEY: Record<SportTab, keyof LeaderRow> = {
 const RANK_TINTS = ['#FBBF24', '#CBD5E1', '#D08A50'];
 
 export default function LeaderboardPage() {
-  const [view, setView]       = useState<View>('global');
+  const [viewState, setView]  = useState<View>('global');
+  // The walkthrough shows the global board, then the climb.
+  const tourActive = useTourStore((s) => s.active);
+  const tourStep   = useTourStore((s) => s.step);
+  const view: View =
+    tourActive && tourStep === 'ranks' ? 'global' :
+    tourActive && tourStep === 'climb' ? 'climb' : viewState;
   // The climb is computed from the global standing, so it fetches as global.
   const scope: Scope          = view === 'climb' ? 'global' : view;
   const [sport, setSport]     = useState<SportTab>('global');

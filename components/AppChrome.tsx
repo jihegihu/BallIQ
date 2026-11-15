@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import EloHeader from '@/components/EloHeader';
 import BottomNav from '@/components/BottomNav';
-import OnboardingModal from '@/components/OnboardingModal';
+import TourCoach, { TourSpacer } from '@/components/TourCoach';
 import PushRegistrar from '@/components/PushRegistrar';
 import PullToRefresh from '@/components/PullToRefresh';
 
@@ -32,11 +32,11 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <PushRegistrar />
-      <OnboardingModal />
+      <TourCoach />
       <EloHeader />
       {/* reserves space for the fixed top bar (h-12 + notch safe area) */}
       <PullToRefresh>
-        <div className="flex-1" style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top))' }}>{children}</div>
+        <div className="flex-1" style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top))' }}>{children}<TourSpacer /></div>
       </PullToRefresh>
       <BottomNav />
     </>

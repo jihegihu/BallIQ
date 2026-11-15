@@ -5,12 +5,16 @@
 import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
 import Icon from '@/components/Icon';
+import { useTourStore } from '@/lib/tourStore';
 
 export default function PendingPicksBar() {
   const picks   = useUserStore((s) => s.user.picks);
   const pending = picks.filter((p) => p.outcome === 'pending');
 
-  if (pending.length === 0) return null;
+  // The walkthrough's coach card occupies this same strip above the nav.
+  const touring = useTourStore((s) => s.active);
+
+  if (pending.length === 0 || touring) return null;
 
   const potential = pending.reduce((s, p) => s + p.projectedGain, 0);
 

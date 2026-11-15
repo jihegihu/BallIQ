@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useUser, useClerk } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
 import { useThemeStore } from '@/lib/themeStore';
-import { useOnboardingStore } from '@/lib/onboardingStore';
+import { useTourStore } from '@/lib/tourStore';
 import { unregisterDevice } from '@/lib/pushDevice';
 import Icon from '@/components/Icon';
 import TierLabel from '@/components/TierLabel';
@@ -17,7 +17,7 @@ export default function AccountPage() {
   const { signOut }                   = useClerk();
   const user                          = useUserStore((s) => s.user);
   const { theme, setTheme }           = useThemeStore();
-  const openOnboarding                = useOnboardingStore((s) => s.open);
+  const startTour                     = useTourStore((s) => s.start);
 
   // null while we don't yet know — the control renders disabled rather than
   // guessing "on" and flipping under the user a moment later.
@@ -211,10 +211,10 @@ export default function AccountPage() {
       <div className="bg-card border border-rim rounded-2xl p-4 mb-5 flex items-center justify-between">
         <div>
           <p className="text-sm font-bold text-ink">How BallIQ Works</p>
-          <p className="text-[11px] text-dim mt-0.5">Replay the welcome walkthrough</p>
+          <p className="text-[11px] text-dim mt-0.5">Take the guided tour again</p>
         </div>
         <button
-          onClick={openOnboarding}
+          onClick={() => startTour(user.picks.length, true)}
           className="px-3 py-1.5 rounded-xl border border-rim text-xs font-black text-sub hover:border-accent/40 hover:text-accent transition"
         >
           Replay <Icon name="arrowRight" size={14} className="ml-1" />
