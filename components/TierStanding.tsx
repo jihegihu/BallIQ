@@ -27,13 +27,19 @@ export type Standing = {
   distribution: { label: string; min: number; max: number | null; count: number }[];
 };
 
-export default function TierStanding({ standing }: { standing: Standing | null }) {
+export default function TierStanding({ standing, sportLabel }: {
+  standing: Standing | null;
+  /** Set on a sport ladder ("NBA"); left out for the overall one. */
+  sportLabel?: string;
+}) {
   const theme = useThemeStore((s) => s.theme);
 
   if (!standing || standing.myElo == null) {
     return (
       <p className="text-center text-sm text-dim py-10">
-        Make a pick to take your place on the ladder.
+        {sportLabel
+          ? `Get ${/^[AEIOU]/.test(sportLabel) ? 'an' : 'a'} ${sportLabel} pick settled to take your place on the ${sportLabel} ladder.`
+          : 'Make a pick to take your place on the ladder.'}
       </p>
     );
   }
@@ -137,7 +143,7 @@ export default function TierStanding({ standing }: { standing: Standing | null }
           </p>
           {topPercent !== null && (
             <p className="text-xs text-dim">
-              top <span className="font-black text-ink tabular-nums">{topPercent}%</span> of players
+              top <span className="font-black text-ink tabular-nums">{topPercent}%</span> of {sportLabel ? `${sportLabel} players` : 'players'}
             </p>
           )}
         </div>

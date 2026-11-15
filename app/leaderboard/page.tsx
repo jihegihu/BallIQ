@@ -154,10 +154,6 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
-      {/* The climb replaces the board entirely — it answers a different
-          question, and stacking both made the page a wall of numbers. */}
-      {view === 'climb' && <TierStanding standing={standing} />}
-
       {/* Add-friend form (friends scope) */}
       {view !== 'climb' && scope === 'friends' && (
         <form onSubmit={handleAdd} className="mb-4">
@@ -214,9 +210,8 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Sport tabs — hidden on the climb, which is global-rating only and
-          would otherwise show a filter that does nothing. */}
-      {view !== 'climb' && (
+      {/* Sport tabs. They apply to the climb as well: each sport has its own
+          ladder, counted among the people who have played it. */}
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-0.5 -mx-4 px-4">
         {TABS.map(({ key, label }) => (
           <button
@@ -232,6 +227,16 @@ export default function LeaderboardPage() {
           </button>
         ))}
       </div>
+
+      {/* The climb replaces the board entirely — it answers a different
+          question, and stacking both made the page a wall of numbers. */}
+      {view === 'climb' && (
+        <div className={loading ? 'opacity-50 transition-opacity' : 'transition-opacity'}>
+          <TierStanding
+            standing={standing}
+            sportLabel={sport === 'global' ? undefined : TABS.find((t) => t.key === sport)?.label}
+          />
+        </div>
       )}
 
       {/* Loading */}
