@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { summarizeRecord, isSettled } from '@/lib/record';
 import Link from 'next/link';
 import { useUser, useClerk } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
@@ -74,9 +73,7 @@ export default function AccountPage() {
     }
   }
 
-  const resolved   = user.picks.filter((p) => isSettled(p.outcome));
-  const { wins, losses, winRate } = summarizeRecord(resolved.map((p) => p.outcome));
-  const netElo     = resolved.reduce((sum, p) => sum + (p.eloDelta ?? 0), 0);
+  const openPicks = user.picks.filter((p) => p.outcome === 'pending').length;
 
   if (!isLoaded) {
     return <div className="min-h-screen bg-base" />;
@@ -122,31 +119,32 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* ── Stats ────────────────────────────────────────────────── */}
-      <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">Stats</p>
-      <div className="grid grid-cols-2 gap-2 mb-5">
-        <div className="bg-card border border-rim rounded-xl p-3">
-          <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Record</p>
-          <p className="text-lg font-black">
-            <span className="text-good">{wins}W</span>
-            <span className="text-dim mx-1">–</span>
-            <span className="text-bad">{losses}L</span>
-          </p>
+      {/* ── At a glance ──────────────────────────────────────────────
+          Deliberately broad. Record, win rate and Elo by category all live
+          on the Stats tab; repeating them here gave two screens that could
+          only ever agree. This answers a different question — how much have
+          I been playing — and points at the detail. */}
+      <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">At a glance</p>
+      <div className="bg-card border border-rim rounded-2xl mb-5">
+        <div className="grid grid-cols-3 divide-x divide-rim">
+          {([
+            ['Picks made', user.totalPicks.toLocaleString()],
+            ['Open now', String(openPicks)],
+            ['Day streak', String(user.currentStreak)],
+          ] as const).map(([label, value]) => (
+            <div key={label} className="px-3 py-3 text-center">
+              <p className="text-xl font-black text-ink tabular-nums leading-none">{value}</p>
+              <p className="text-[11px] text-dim mt-1.5">{label}</p>
+            </div>
+          ))}
         </div>
-        <div className="bg-card border border-rim rounded-xl p-3">
-          <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Net Elo</p>
-          <p className={`text-lg font-black ${netElo >= 0 ? 'text-good' : 'text-bad'}`}>
-            {netElo >= 0 ? '+' : ''}{netElo}
-          </p>
-        </div>
-        <div className="bg-card border border-rim rounded-xl p-3">
-          <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Total Picks</p>
-          <p className="text-lg font-black text-ink">{user.totalPicks}</p>
-        </div>
-        <div className="bg-card border border-rim rounded-xl p-3">
-          <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Win Rate</p>
-          <p className="text-lg font-black text-ink">{winRate !== null ? `${winRate}%` : '—'}</p>
-        </div>
+        <Link
+          href="/picks?tab=stats"
+          className="flex items-center justify-between px-4 py-3 border-t border-rim text-sm font-bold text-ink"
+        >
+          Your full stats
+          <Icon name="chevronRight" size={16} className="text-dim" />
+        </Link>
       </div>
 
       {/* ── Preferences ──────────────────────────────────────────── */}

@@ -29,7 +29,7 @@ const COPY: Record<Exclude<TourStep, 'sport' | 'picks'>, { title: string; body: 
   },
   results: {
     title: 'Results and stats',
-    body:  'Settled picks move to Results with the Elo you won or lost. Your record builds up above them, with the full breakdown under Stats. These are examples.',
+    body:  'Settled picks move to Results with the Elo you won or lost. Your record and breakdowns build up under Stats, the tab beside it. These are examples.',
   },
   ranks: {
     title: 'See where you rank',

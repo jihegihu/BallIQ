@@ -5,8 +5,6 @@
 // towards. These stand in until real results exist, and are labelled as
 // examples so nobody mistakes them for their own record.
 
-import { StatTile } from '@/components/StatPieces';
-import Icon from '@/components/Icon';
 import type { UserPick } from '@/types';
 
 function ExampleTag() {
@@ -14,34 +12,6 @@ function ExampleTag() {
     <span className="inline-block text-[9px] font-black uppercase tracking-widest text-accent bg-accent/15 rounded-md px-1.5 py-px">
       Example
     </span>
-  );
-}
-
-/** The stats strip and headline tiles, with made-up numbers. */
-export function ExampleStats() {
-  return (
-    <div className="mb-4">
-      <div className="mb-1.5"><ExampleTag /></div>
-      <div className="w-full bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-sm font-black tabular-nums">
-          <span>
-            <span className="text-good">12W</span>
-            <span className="text-dim mx-0.5">–</span>
-            <span className="text-bad">7L</span>
-          </span>
-          <span className="text-sub text-xs font-bold">63%</span>
-          <span className="text-good">+84 Elo</span>
-        </div>
-        <span className="flex items-center gap-1 text-[10px] font-bold text-dim uppercase tracking-widest">
-          Stats <Icon name="chevronRight" size={14} />
-        </span>
-      </div>
-      <div className="grid grid-cols-3 gap-2 mt-2">
-        <StatTile label="Right now" value="W3" sub="wins in a row" tone="good" />
-        <StatTile label="Best run" value="6" sub="wins in a row" />
-        <StatTile label="Best pick" value="+31" sub="Elo" tone="good" />
-      </div>
-    </div>
   );
 }
 

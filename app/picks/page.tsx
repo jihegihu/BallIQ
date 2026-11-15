@@ -7,10 +7,9 @@ import Link from 'next/link';
 import { UserPick } from '@/types';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
 import TournamentRecaps from '@/components/TournamentRecaps';
-import { summarizeRecord } from '@/lib/record';
 import StatsPanel from '@/components/StatsPanel';
 import { useTourStore } from '@/lib/tourStore';
-import { ExampleStats, ExampleResultsLabel, EXAMPLE_RESULTS } from '@/components/TourExamples';
+import { ExampleResultsLabel, EXAMPLE_RESULTS } from '@/components/TourExamples';
 import Icon from '@/components/Icon';
 
 type Tab = 'pending' | 'results' | 'stats';
@@ -66,7 +65,12 @@ type MatchScore = {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PicksPage() {
-  const [tabState, setTab]              = useState<Tab>('pending');
+  // /picks?tab=stats opens on Stats (the Account page links there). Read once
+  // on the client; nothing below renders until the account has loaded, so the
+  // server and the client never disagree about which tab is showing.
+  const [tabState, setTab]              = useState<Tab>(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'stats'
+      ? 'stats' : 'pending');
 
   // The walkthrough shows Pending, then Results. Derived, not copied into
   // state, so the tab is the user's own again the moment it ends.
@@ -127,10 +131,6 @@ export default function PicksPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending.length]);
 
-  // ── Compute analytics ────────────────────────────────────────────────────
-
-  const { wins, losses, winRate } = summarizeRecord(results.map((p) => p.outcome));
-  const netElo     = results.reduce((sum, p) => sum + (p.eloDelta ?? 0), 0);
 
   // Picks live in the store, so there's no server suspense boundary to hang a
   // loading.tsx off — show the skeleton until the first hydrate lands.
@@ -160,39 +160,10 @@ export default function PicksPage() {
     <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
       <h1 className="text-2xl font-black text-ink mb-4">My Picks</h1>
 
-      {/* ── Record ─────────────────────────────────────────────────────────
-          One line, always visible, that opens the Stats tab. The full
-          breakdown used to be folded up inside this strip, where most people
-          never found it. Hidden on the Stats tab itself, which opens with the
-          same figures. */}
-      {results.length > 0 && tab !== 'stats' && (
-        <button
-          onClick={() => setTab('stats')}
-          className="w-full mb-4 bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center justify-between active:scale-[0.99] transition"
-        >
-          <div className="flex items-center gap-3 text-sm font-black tabular-nums">
-            <span>
-              <span className="text-good">{wins}W</span>
-              <span className="text-dim mx-0.5">–</span>
-              <span className="text-bad">{losses}L</span>
-            </span>
-            {winRate !== null && <span className="text-sub text-xs font-bold">{winRate}%</span>}
-            <span className={netElo >= 0 ? 'text-good' : 'text-bad'}>
-              {netElo >= 0 ? '+' : ''}{netElo} Elo
-            </span>
-          </div>
-          <span className="flex items-center gap-1 text-[10px] font-bold text-dim uppercase tracking-widest">
-            Stats <Icon name="chevronRight" size={14} />
-          </span>
-        </button>
-      )}
-
-      {/* With no settled picks there's no stats dropdown to tuck these into,
-          but tournament picks still in flight are worth surfacing. Renders
-          nothing when the user has no tournament picks at all. */}
+      {/* Before anything has settled the Stats tab is empty, so tournament
+          picks still in flight are surfaced here instead. Renders nothing
+          when the user has no tournament picks at all. */}
       {results.length === 0 && tab !== 'stats' && <TournamentRecaps picks={user.picks} />}
-
-      {showExamples && <ExampleStats />}
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <div className="flex gap-2 mb-5">
