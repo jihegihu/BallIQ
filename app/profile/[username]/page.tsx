@@ -4,6 +4,7 @@ import Link from 'next/link';
 import TierLabel from '@/components/TierLabel';
 import { tierFor } from '@/lib/tiers';
 import { START_ELO } from '@/lib/elo';
+import CreatorBadge from '@/components/CreatorBadge';
 import { summarizeRecord } from '@/lib/record';
 import Icon from '@/components/Icon';
 
@@ -69,7 +70,10 @@ export default async function PublicProfilePage({
         </div>
 
         <div className="min-w-0">
-          <p className="font-black text-ink text-lg truncate">{u.username as string}</p>
+          <p className="flex items-center gap-2 font-black text-ink text-lg">
+            <span className="truncate">{u.username as string}</span>
+            <CreatorBadge userId={u.id as string} />
+          </p>
           <TierLabel elo={u.global_elo as number} diamond className="block text-[11px] font-bold mt-0.5" />
           <p className="text-[10px] text-dim mt-0.5">
             {u.total_picks as number} picks · {u.weeks_active as number} weeks active

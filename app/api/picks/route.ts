@@ -97,6 +97,7 @@ export async function GET() {
   return NextResponse.json({
     picks,
     user: user ? {
+      id:            userId,
       username:      user.username ?? username,
       globalElo:     user.global_elo,
       seasonElo:     user.season_elo,

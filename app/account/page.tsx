@@ -10,6 +10,7 @@ import { useOnboardingStore } from '@/lib/onboardingStore';
 import { unregisterDevice } from '@/lib/pushDevice';
 import Icon from '@/components/Icon';
 import TierLabel from '@/components/TierLabel';
+import CreatorBadge from '@/components/CreatorBadge';
 
 export default function AccountPage() {
   const { user: clerkUser, isLoaded } = useUser();
@@ -105,7 +106,10 @@ export default function AccountPage() {
           </div>
         )}
         <div className="min-w-0">
-          <p className="font-black text-ink text-base truncate">{username}</p>
+          <p className="flex items-center gap-2 font-black text-ink text-base">
+            <span className="truncate">{username}</span>
+            <CreatorBadge userId={user.id} />
+          </p>
           {email && <p className="text-[11px] text-dim truncate mt-0.5">{email}</p>}
           <div className="flex items-center gap-1.5 mt-1.5">
             <Icon name="diamond" size={11} className="text-accent" />

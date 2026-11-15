@@ -5,6 +5,7 @@ import { useUserStore } from '@/lib/userStore';
 import Icon, { type IconName } from '@/components/Icon';
 import TierStanding, { type Standing } from '@/components/TierStanding';
 import { tierFor } from '@/lib/tiers';
+import CreatorBadge from '@/components/CreatorBadge';
 
 type Scope = 'global' | 'friends';
 /** What the page is showing. 'climb' is a view, not a server scope: the API
@@ -285,9 +286,10 @@ export default function LeaderboardPage() {
 
                 {/* Name + badge */}
                 <div className="flex-1 min-w-0">
-                  <p className={`font-black text-sm truncate ${isMe ? 'text-accent' : 'text-ink'}`}>
-                    {row.username ?? 'Player'}
-                    {isMe && <span className="ml-1 text-[9px] font-bold opacity-70">(you)</span>}
+                  <p className={`flex items-center gap-1.5 font-black text-sm ${isMe ? 'text-accent' : 'text-ink'}`}>
+                    <span className="truncate">{row.username ?? 'Player'}</span>
+                    <CreatorBadge userId={row.id} />
+                    {isMe && <span className="shrink-0 text-[9px] font-bold opacity-70">(you)</span>}
                   </p>
                   <p className="text-[10px] text-dim">
                     {tierFor(elo).label} ·{' '}
