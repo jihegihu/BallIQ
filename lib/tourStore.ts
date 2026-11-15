@@ -11,6 +11,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { track } from './events';
 
 export type TourStep = 'sport' | 'picks' | 'pending' | 'results' | 'ranks' | 'climb';
 export type TourSport = 'NBA' | 'NFL' | 'MLB' | 'SOCCER' | 'TENNIS';
@@ -78,27 +79,39 @@ export const useTourStore = create<TourStore>()(
       picksAtStart: 0,
       replay: false,
 
-      start: (picksAtStart, replay = false) =>
-        set({ active: true, step: 'sport', sport: null, picksAtStart, replay }),
+      start: (picksAtStart, replay = false) => {
+        track('tour_started', { replay });
+        set({ active: true, step: 'sport', sport: null, picksAtStart, replay });
+      },
 
       // The count restarts here, so picks only count once a sport is chosen —
       // and changing sport does not throw away picks already made.
-      chooseSport: (sport, picksNow) =>
+      chooseSport: (sport, picksNow) => {
+        track('tour_step', { step: 'picks', sport });
         set((s) => ({
           sport,
           step: 'picks',
           picksAtStart: s.sport === null ? picksNow : s.picksAtStart,
-        })),
+        }));
+      },
 
-      goto: (step) => set({ step }),
+      goto: (step) => {
+        // Going back to the chooser is not progress; everything else is.
+        if (step !== 'sport') track('tour_step', { step });
+        set({ step });
+      },
 
       next: () => {
         const i = TOUR_STEPS.indexOf(get().step);
-        if (i >= TOUR_STEPS.length - 1) get().finish();
-        else set({ step: TOUR_STEPS[i + 1] });
+        if (i >= TOUR_STEPS.length - 1) { get().finish(); return; }
+        track('tour_step', { step: TOUR_STEPS[i + 1] });
+        set({ step: TOUR_STEPS[i + 1] });
       },
 
-      finish: () => set({ active: false, done: true, step: 'sport', sport: null, replay: false }),
+      finish: () => {
+        track('tour_finished');
+        set({ active: false, done: true, step: 'sport', sport: null, replay: false });
+      },
       markDone: () => set({ done: true }),
     }),
     {

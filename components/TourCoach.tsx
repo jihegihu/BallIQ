@@ -19,6 +19,7 @@ import { useUserStore } from '@/lib/userStore';
 import { useTourStore, TOUR_STEPS, TOUR_ROUTE, TOUR_PICKS_NEEDED, type TourStep } from '@/lib/tourStore';
 import { START_ELO } from '@/lib/elo';
 import { tierFor } from '@/lib/tiers';
+import { track } from '@/lib/events';
 
 const COPY: Record<Exclude<TourStep, 'sport' | 'picks'>, { title: string; body: string }> = {
   pending: {
@@ -148,7 +149,7 @@ export default function TourCoach() {
             )}
             {/* Only once a pick is in, or for someone replaying it by choice. */}
             {step === 'picks' && made < TOUR_PICKS_NEEDED && (made >= 1 || tour.replay) && (
-              <button onClick={tour.next} className="hover:text-sub">Skip</button>
+              <button onClick={() => { track('tour_skipped', { made }); tour.next(); }} className="hover:text-sub">Skip</button>
             )}
           </div>
           {action && (

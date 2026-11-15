@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import EloHeader from '@/components/EloHeader';
 import BottomNav from '@/components/BottomNav';
 import TourCoach, { TourSpacer } from '@/components/TourCoach';
+import AnalyticsBeacon from '@/components/AnalyticsBeacon';
 import PushRegistrar from '@/components/PushRegistrar';
 import PullToRefresh from '@/components/PullToRefresh';
 
@@ -33,6 +34,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
     <>
       <PushRegistrar />
       <TourCoach />
+      <AnalyticsBeacon />
       <EloHeader />
       {/* reserves space for the fixed top bar (h-12 + notch safe area) */}
       <PullToRefresh>

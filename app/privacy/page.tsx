@@ -24,6 +24,7 @@ export default function PrivacyPage() {
             <li><b className="text-ink">Account info</b> — your name, username, and email address, handled by our authentication provider (Clerk).</li>
             <li><b className="text-ink">Gameplay data</b> — the picks you make, your Elo ratings, streaks, and friends you add.</li>
             <li><b className="text-ink">Basic technical data</b> — standard logs your browser/app sends (e.g. device type), used to keep the service running and secure.</li>
+            <li><b className="text-ink">Usage data</b> — when you open the app, which steps of the getting-started walkthrough you complete, and whether you share an invite or a card. Stored with your account in our own database, used only to improve the app, and never shared.</li>
           </ul>
         </Section>
 

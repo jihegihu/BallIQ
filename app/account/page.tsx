@@ -7,6 +7,7 @@ import { useUser, useClerk } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
 import { useThemeStore } from '@/lib/themeStore';
 import { useTourStore } from '@/lib/tourStore';
+import { isCreator } from '@/lib/creator';
 import { unregisterDevice } from '@/lib/pushDevice';
 import Icon from '@/components/Icon';
 import TierLabel from '@/components/TierLabel';
@@ -206,6 +207,19 @@ export default function AccountPage() {
           </div>
         </div>
       </div>
+
+      {isCreator(user.id) && (
+        <Link
+          href="/stats"
+          className="bg-card border border-rim rounded-2xl p-4 mb-5 flex items-center justify-between"
+        >
+          <div>
+            <p className="text-sm font-bold text-ink">Stats</p>
+            <p className="text-[11px] text-dim mt-0.5">Signups, onboarding and who comes back</p>
+          </div>
+          <Icon name="chevronRight" size={16} className="text-dim" />
+        </Link>
+      )}
 
       {/* ── Replay tutorial ─────────────────────────────────────── */}
       <div className="bg-card border border-rim rounded-2xl p-4 mb-5 flex items-center justify-between">
