@@ -159,3 +159,11 @@ Astryx items 3, 6 and 8. State before it is tagged `before-design-pass-2`; the p
 - **Space before boxes:** lists are one card with `divide-y` (leaderboard, profile results),
   related figures are one `StatStrip` with dividers, and groups get more space between them
   than inside them.
+
+## Games board (2026-11-15)
+`components/MoneylineGrid.tsx`. The list is grouped by time — Starting soon (next 3h), Later
+today, Tomorrow, Coming up — with the last two folded by default (everything open when there
+are 8 games or fewer). A game with a pick on it shrinks to one line 1.5s after the pick; tap
+it to reopen, change or remove, and "Done" tucks it away again. The how-to line hides after
+3 picks. The list renders on the client only, because groups and times depend on the device
+clock and drawing them on the server made every card disagree on hydration.

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
 import { calculatePickXP } from '@/lib/userStore';
@@ -16,6 +16,7 @@ import LiveStrip from '@/components/LiveStrip';
 import { useLiveScores } from '@/lib/useLiveScores';
 import Icon from '@/components/Icon';
 import { isLocked } from '@/lib/lock';
+import { PICK_LABEL } from '@/lib/pickLabels';
 import { useTourStore } from '@/lib/tourStore';
 import TourSportPicker from '@/components/TourSportPicker';
 
@@ -71,6 +72,34 @@ function fmtTime(iso: string) {
   } catch { return iso; }
 }
 
+/** Just the kick-off time. The day is said once, by the group heading above. */
+function fmtClock(iso: string) {
+  try {
+    return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+  } catch { return iso; }
+}
+
+// ── Time groups ──────────────────────────────────────────────────────────────
+// The board holds 25 or more games, and laid out as one flat list a game thirty
+// hours away looked exactly as urgent as one starting in ten minutes. Grouping
+// by when says what needs a decision now, and the later groups start folded so
+// the first screen is the handful of games that actually do.
+type GroupKey = 'soon' | 'today' | 'tomorrow' | 'later';
+const GROUPS: { key: GroupKey; label: string }[] = [
+  { key: 'soon',     label: 'Starting soon' },
+  { key: 'today',    label: 'Later today' },
+  { key: 'tomorrow', label: 'Tomorrow' },
+  { key: 'later',    label: 'Coming up' },
+];
+/** "Soon" is the next few hours, whatever the calendar says. */
+const SOON_MS = 3 * 60 * 60 * 1000;
+/** With this few games there is nothing to fold away. */
+const FOLD_ABOVE = 8;
+/** How long a card stays open after a pick before tucking itself away. */
+const TUCK_AFTER_MS = 1500;
+
+const noSubscription = () => () => {};
+
 export default function MoneylineGrid({ matches }: { matches: Match[] }) {
   const [chosenSport, setSport]     = useState<SportFilter>('ALL');
 
@@ -83,6 +112,37 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
   const pinned: SportFilter | null = tourActive && tourStep === 'picks' && tourSport ? tourSport : null;
   const sport: SportFilter = pinned ?? chosenSport;
   const [sheetMatch, setSheetMatch] = useState<Match | null>(null);
+
+  // Day groups and kick-off times depend on the device's clock and timezone,
+  // which the server does not have. The list is therefore drawn on the client
+  // only; drawing it on both made the two disagree on every card.
+  const onClient = useSyncExternalStore(noSubscription, () => true, () => false);
+  const [nowMs] = useState(() => Date.now());
+
+  // Groups the user has opened or closed by hand; unset means "use the default".
+  const [toggled, setToggled] = useState<Partial<Record<GroupKey, boolean>>>({});
+  // Picked games the user has opened back up to change or remove the pick.
+  const [reopened, setReopened] = useState<Set<string>>(new Set());
+  // Games picked a moment ago, each with the time it may tuck itself away.
+  // They stay open briefly so the confirmation is seen and the card does not
+  // vanish from under the finger that picked it.
+  const [justPicked, setJustPicked] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (justPicked.size === 0) return;
+    const next = Math.min(...justPicked.values());
+    const timer = setTimeout(() => {
+      const now = Date.now();
+      const done = [...justPicked].filter(([, until]) => until <= now).map(([id]) => id);
+      setJustPicked((prev) => new Map([...prev].filter(([id]) => !done.includes(id))));
+      // Tucking away is also the end of "I opened this to change it".
+      setReopened((prev) => new Set([...prev].filter((id) => !done.includes(id))));
+    }, Math.max(0, next - Date.now()) + 20);
+    return () => clearTimeout(timer);
+  }, [justPicked]);
+
+  function holdOpen(matchId: string) {
+    setJustPicked((prev) => new Map(prev).set(matchId, Date.now() + TUCK_AFTER_MS));
+  }
 
   const user       = useUserStore((s) => s.user);
   const submitPick = useUserStore((s) => s.submitPick);
@@ -155,6 +215,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
       placedAt:         new Date().toISOString(),
     };
     submitPick(pick);   // HoldToPick already fired the success haptic
+    holdOpen(match.id);
   }
 
   const todayLine = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
@@ -237,13 +298,100 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
         </div>
       ) : (
         <>
-        <p className="text-[11px] text-dim mb-2 px-0.5">
-          Press and hold a team to lock it in · hold the card header for margin &amp; totals
-        </p>
-        <div className="flex flex-col gap-1.5">
-          {visible.map((match) => {
+        {/* How to pick, for as long as it is news. After a few picks it is a
+            line of instructions above every board that nobody needs. */}
+        {(user.totalPicks < 3 || tourActive) && (
+          <p className="text-[11px] text-dim mb-2 px-0.5">
+            Press and hold a team to lock it in · hold the card header for margin &amp; totals
+          </p>
+        )}
+
+        {onClient && (() => {
+          const groupOf = (m: Match): GroupKey => {
+            const t = new Date(m.commenceTime).getTime();
+            if (t - nowMs <= SOON_MS) return 'soon';
+            const day = new Date(t).toDateString();
+            if (day === new Date(nowMs).toDateString()) return 'today';
+            if (day === new Date(nowMs + 86_400_000).toDateString()) return 'tomorrow';
+            return 'later';
+          };
+          const groups = GROUPS
+            .map((g) => ({ ...g, games: visible.filter((m) => groupOf(m) === g.key) }))
+            .filter((g) => g.games.length > 0);
+
+          // Open by default: anything today, and always the first group, so a
+          // board whose next game is tomorrow does not open on a closed list.
+          const openByDefault = (key: GroupKey) =>
+            visible.length <= FOLD_ABOVE || key === 'soon' || key === 'today' || key === groups[0]?.key;
+
+          return groups.map((group, gi) => {
+            const open = toggled[group.key] ?? openByDefault(group.key);
+            return (
+              <section key={group.key} className={gi === 0 ? '' : 'mt-5'}>
+                <button
+                  onClick={() => { hapticImpact('light'); setToggled((t) => ({ ...t, [group.key]: !open })); }}
+                  aria-expanded={open}
+                  className="tap w-full flex items-center justify-between mb-2 px-0.5 text-left"
+                >
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-sm font-black text-ink">{group.label}</span>
+                    <span className="text-xs text-dim tabular-nums">
+                      {group.games.length} game{group.games.length !== 1 ? 's' : ''}
+                    </span>
+                  </span>
+                  <Icon name={open ? 'chevronDown' : 'chevronRight'} size={16} className="text-dim" />
+                </button>
+
+                {open && (
+                  <div className="flex flex-col gap-1.5">
+                    {group.games.map((match) => {
             const pick   = getPendingMoneyline(match.id);
             const locked = isLocked(match.commenceTime);
+            const when   = group.key === 'later' ? fmtTime(match.commenceTime) : fmtClock(match.commenceTime);
+
+            // A game that already has a pick on it folds down to one line:
+            // the decision is made, so it no longer needs a full card's worth
+            // of the screen. Tapping the line opens it again to change or
+            // remove the pick.
+            const mine = user.picks.filter((p) => p.matchId === match.id && p.outcome === 'pending');
+            if (mine.length > 0 && !reopened.has(match.id) && !justPicked.has(match.id)) {
+              // Title: the team they backed to win, or failing that the game.
+              // Detail: what else is riding on it. Kept apart so the title
+              // never has to be cut off to make room for a count.
+              const team  = pick ? (pick.pickSide === 'home' ? match.homeTeam : match.awayTeam) : null;
+              const extra = mine.length - (pick ? 1 : 0);
+              const brief = (name: string) =>
+                SOCCER_SPORTS.includes(match.sport) || match.sport === 'TENNIS' ? name : name.split(' ').pop() ?? name;
+              const label = team ?? `${brief(match.awayTeam)} at ${brief(match.homeTeam)}`;
+              const detail = team
+                ? (extra > 0 ? `+${extra} more · ` : '')
+                : mine.length === 1 ? `${PICK_LABEL[mine[0].betType]} pick · ` : `${mine.length} picks · `;
+              return (
+                <button
+                  key={match.id}
+                  onClick={() => { hapticImpact('light'); setReopened((prev) => new Set(prev).add(match.id)); }}
+                  aria-label={`${label}. Open to change or remove.`}
+                  className="w-full flex items-center gap-3 bg-card border border-rim rounded-2xl px-3.5 py-2.5 text-left active:scale-[0.98] transition-transform"
+                >
+                  <span className="w-5 h-5 rounded-full bg-pick flex items-center justify-center shrink-0">
+                    <Icon name="check" size={12} strokeWidth={3} className="text-[#06080F]" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-black text-ink truncate">{label}</span>
+                    <span className="block text-[11px] text-dim truncate">{detail}{sportName(match.sport)} · {when}</span>
+                  </span>
+                  <span className="text-right shrink-0 tabular-nums">
+                    <span className="block text-sm font-black text-good">
+                      +{mine.reduce((sum, p) => sum + p.projectedGain, 0)}
+                    </span>
+                    <span className="block text-[10px] text-dim">
+                      risk <span className="text-bad font-bold">−{mine.reduce((sum, p) => sum + p.projectedLoss, 0)}</span>
+                    </span>
+                  </span>
+                  <Icon name="chevronDown" size={15} className="text-dim shrink-0" />
+                </button>
+              );
+            }
 
             const homeElo  = match.eventElos.moneylineHome;
             const awayElo  = match.eventElos.moneylineAway;
@@ -252,25 +400,33 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
 
             return (
               <LongPressCard key={match.id} onLongPress={() => setSheetMatch(match)}>
-                {/* Header — ~1.7x its old height, and the sport/time now read
-                    at a glance instead of needing a squint */}
-                <div className="flex items-center justify-between px-3.5 py-2.5 bg-layer border-b border-rim">
+                {/* Header: sport and time on a plain line. It used to be a
+                    filled band repeating the day on every card; the group
+                    heading says the day once now, so the band was 25 copies of
+                    weight carrying nothing. */}
+                <div className="flex items-center justify-between px-3.5 pt-2.5 pb-1">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px] font-black text-accent uppercase tracking-widest">{sportName(match.sport)}</span>
                     <span className="text-dim text-[10px]">·</span>
-                    <span className="text-[12px] font-semibold text-sub">{fmtTime(match.commenceTime)}</span>
+                    <span className="text-[12px] font-semibold text-sub">{when}</span>
                   </div>
-                  <Link
-                    href={`/matches/${match.id}`}
-                    className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[11px] font-bold"
-                  >
-                    More picks <Icon name="chevronRight" size={14} className="ml-0.5" />
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    {reopened.has(match.id) && mine.length > 0 && (
+                      <button
+                        onClick={() => setReopened((prev) => new Set([...prev].filter((id) => id !== match.id)))}
+                        className="tap text-[11px] font-black text-pick"
+                      >
+                        Done
+                      </button>
+                    )}
+                    <Link
+                      href={`/matches/${match.id}`}
+                      className="flex items-center gap-0.5 text-dim hover:text-accent transition text-[11px] font-bold"
+                    >
+                      More picks <Icon name="chevronRight" size={14} className="ml-0.5" />
+                    </Link>
+                  </div>
                 </div>
-
-                {/* No probability bar here — each team button already states
-                    its own "{odds} · {n}% favorite/underdog", so the bar was
-                    saying the same thing twice and costing card height. */}
 
                 {/* Team buttons */}
                 <div className="grid grid-cols-2">
@@ -306,14 +462,9 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                           <Icon name="trendUp" size={14} className="mr-1 -mt-0.5" />+{proj.projectedGain}
                           <span className="ml-0.5 text-[9px] font-bold">Elo</span>
                         </p>
-                        {/* Risk only — the odds and favourite/underdog line
-                            stays on the More picks page. */}
                         <p className="text-[10px] text-dim tabular-nums">
                           risk <span className="text-bad font-bold">−{proj.projectedLoss}</span>
                         </p>
-                        {/* No per-button hint here — the list header already
-                            explains the gesture, and an extra line is exactly
-                            the height this card can't spare. */}
                         {locked && <span className="mt-0.5 text-[8px] text-dim">Locked</span>}
                       </HoldToPick>
                     );
@@ -321,8 +472,13 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                 </div>
               </LongPressCard>
             );
-          })}
-        </div>
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          });
+        })()}
         </>
       )}
 
