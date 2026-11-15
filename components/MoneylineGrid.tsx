@@ -199,9 +199,9 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
             // its own "Change sport".
             disabled={pinned !== null}
             onClick={() => { hapticImpact('light'); setSport(s); }}
-            className={`shrink-0 py-2.5 px-5 rounded-xl text-sm font-black tracking-wide transition active:scale-95 disabled:opacity-50 ${
+            className={`shrink-0 py-2.5 px-5 rounded-xl text-sm font-black tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${
               sport === s
-                ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                ? 'bg-primary text-white shadow-lg shadow-primary/20'
                 : 'bg-card text-sub border border-rim hover:border-sub'
             }`}
           >
@@ -224,7 +224,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
           {sport !== 'ALL' && upcoming.length > 0 ? (
             <button
               onClick={() => { hapticImpact('light'); setSport('ALL'); }}
-              className="mt-1 text-sm font-bold text-accent active:scale-95 transition"
+              className="mt-1 text-sm font-bold text-accent active:scale-[0.98] transition"
             >
               See all {upcoming.length} game{upcoming.length !== 1 ? 's' : ''}
               <Icon name="arrowRight" size={15} className="ml-1.5" />

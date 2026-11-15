@@ -30,7 +30,9 @@ const PALETTE = {
 // Violet brand ramp reads correctly on both grounds, so it is theme-independent.
 const ACCENT      = '#8B5CF6';
 const ACCENT_LINK = '#7C3AED';
-const GRADIENT    = 'linear-gradient(135deg, #7C3AED, #A78BFA)';
+// The same solid fill as every other primary button (--c-primary). Clerk takes
+// inline styles, not classes, so the value is repeated here.
+const GRADIENT    = '#7C3AED';
 
 function buildAppearance(theme: 'dark' | 'light') {
   const p = PALETTE[theme];

@@ -151,17 +151,17 @@ export default function TourCoach() {
         <div className="flex items-center justify-between gap-3 mt-3">
           <div className="flex items-center gap-4 text-xs font-bold text-dim">
             {step === 'picks' && (
-              <button onClick={() => tour.goto('sport')} className="hover:text-sub">Change sport</button>
+              <button onClick={() => tour.goto('sport')} className="tap hover:text-sub">Change sport</button>
             )}
             {/* Only once a pick is in, or for someone replaying it by choice. */}
             {step === 'picks' && made < TOUR_PICKS_NEEDED && (made >= 1 || tour.replay) && (
-              <button onClick={() => { track('tour_skipped', { made }); tour.next(); }} className="hover:text-sub">Skip</button>
+              <button onClick={() => { track('tour_skipped', { made }); tour.next(); }} className="tap hover:text-sub">Skip</button>
             )}
           </div>
           {action && (
             <button
               onClick={action.run}
-              className="shrink-0 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-black active:scale-95 transition-transform"
+              className="tap shrink-0 px-4 py-2 rounded-xl bg-primary text-white text-sm font-black active:scale-[0.98] transition-transform"
             >
               {action.label}<Icon name="arrowRight" size={14} className="ml-1.5" />
             </button>

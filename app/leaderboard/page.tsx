@@ -144,8 +144,8 @@ export default function LeaderboardPage() {
           <button
             key={key}
             onClick={() => { setView(key); setAddMsg(''); }}
-            className={`flex-1 py-2 rounded-lg text-xs font-black transition ${
-              view === key ? 'bg-violet-600 text-white' : 'text-dim hover:text-sub'
+            className={`tap flex-1 py-2 rounded-lg text-xs font-black transition ${
+              view === key ? 'bg-primary text-white' : 'text-dim hover:text-sub'
             }`}
           >
             <span className="inline-flex items-center justify-center gap-1.5">
@@ -171,7 +171,7 @@ export default function LeaderboardPage() {
             <button
               type="submit"
               disabled={busy || !addInput.trim()}
-              className="shrink-0 bg-violet-600 text-white font-black px-4 rounded-xl text-sm disabled:opacity-40 active:scale-95 transition"
+              className="shrink-0 bg-primary text-white font-black px-4 rounded-xl text-sm disabled:opacity-40 active:scale-[0.98] transition"
             >
               Add
             </button>
@@ -214,14 +214,17 @@ export default function LeaderboardPage() {
 
       {/* Sport tabs. They apply to the climb as well: each sport has its own
           ladder, counted among the people who have played it. */}
-      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-0.5 -mx-4 px-4">
+      {/* py-2 with -mt-2: the tabs' 44px touch areas reach past their 30px
+          height, and a sideways scroller would otherwise start scrolling
+          vertically to fit them. Net spacing is unchanged. */}
+      <div className="flex gap-1.5 overflow-x-auto py-2 -mt-2 mb-2 -mx-4 px-4">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setSport(key)}
-            className={`shrink-0 py-1.5 px-3.5 rounded-xl text-xs font-black transition ${
+            className={`tap shrink-0 py-1.5 px-3.5 rounded-xl text-xs font-black transition ${
               sport === key
-                ? 'bg-violet-600 text-white'
+                ? 'bg-primary text-white'
                 : 'bg-card text-dim border border-rim hover:border-sub'
             }`}
           >
@@ -345,7 +348,7 @@ export default function LeaderboardPage() {
                     onClick={() => handleRemove(row.id)}
                     disabled={busy}
                     aria-label={`Remove ${row.username}`}
-                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-dim hover:text-bad hover:bg-red-500/10 transition disabled:opacity-40"
+                    className="tap shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-dim hover:text-bad hover:bg-red-500/10 transition disabled:opacity-40"
                   >
                     <Icon name="close" size={13} />
                   </button>

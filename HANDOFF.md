@@ -134,3 +134,15 @@ a rename done only in Supabase is overwritten — change the name in the Clerk d
 - **Onboarding** has a seventh stop on `/pools` that explains head to head without making anyone play.
 - Screens can be checked without signing in: add a throwaway public route, run `next start`, and
   screenshot with headless Chrome at 520px wide (it will not go narrower on Windows).
+
+## Design pass (2026-11-15)
+Mechanical clean-up prompted by reading Meta's Astryx design docs. The state before it is
+tagged `before-design-pass`; the pass is a single commit, so `git revert` on it undoes all of it.
+- **`bg-primary`** (`--c-primary`, violet-600) is the fill for primary buttons. Do not put white
+  text on `bg-accent`: in the dark theme that is 2.6:1.
+- **`.tap`** widens a small control's touch area to 44px without changing how it looks. Inside a
+  sideways scroller, give the scroller vertical padding or it will start scrolling vertically.
+- **One press treatment:** `active:scale-[0.98]`.
+- **Reduced motion** is one global rule in `globals.css`; new animations are covered automatically.
+- Not done yet (changes how screens look, needs approval): text sizes, spacing and card borders,
+  border-vs-shadow, corner radius roles.

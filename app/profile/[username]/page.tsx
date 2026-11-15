@@ -53,7 +53,7 @@ export default async function PublicProfilePage({
   return (
     <main className="min-h-screen pb-10 max-w-md mx-auto px-4 pt-6">
       {/* Back */}
-      <Link href="/leaderboard" className="flex items-center gap-1 text-sub hover:text-ink text-sm mb-5 transition">
+      <Link href="/leaderboard" className="tap flex items-center gap-1 text-sub hover:text-ink text-sm mb-5 transition">
         <Icon name="chevronLeft" size={15} className="mr-1" />Rankings
       </Link>
 

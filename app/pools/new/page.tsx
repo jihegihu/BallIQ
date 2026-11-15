@@ -90,7 +90,7 @@ export default function NewPoolPage() {
 
   return (
     <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
-      <Link href="/pools" className="inline-flex items-center gap-1 text-sub hover:text-ink text-sm">
+      <Link href="/pools" className="tap inline-flex items-center gap-1 text-sub hover:text-ink text-sm">
         <Icon name="chevronLeft" size={15} />Back
       </Link>
       <h1 className="text-2xl font-black text-ink mt-3 mb-4">Start a pool</h1>
@@ -101,8 +101,8 @@ export default function NewPoolPage() {
           <button
             key={s.sport}
             onClick={() => { setSport(s.sport); setChosen(null); }}
-            className={`flex-1 py-2 rounded-lg text-xs font-black transition ${
-              sport === s.sport ? 'bg-violet-600 text-white' : 'text-dim hover:text-sub'
+            className={`tap flex-1 py-2 rounded-lg text-xs font-black transition ${
+              sport === s.sport ? 'bg-primary text-white' : 'text-dim hover:text-sub'
             }`}
           >
             {SPORT_NAME[s.sport] ?? s.sport}
@@ -182,7 +182,7 @@ export default function NewPoolPage() {
                 </span>
                 <span
                   className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
-                    on ? 'bg-accent border-accent' : 'border-rim'
+                    on ? 'bg-primary border-primary' : 'border-rim'
                   }`}
                 >
                   {on && <Icon name="check" size={12} strokeWidth={3} className="text-white" />}
@@ -213,7 +213,7 @@ export default function NewPoolPage() {
       <button
         onClick={create}
         disabled={!slate || busy}
-        className="w-full bg-violet-600 text-white rounded-2xl py-3.5 text-sm font-black disabled:opacity-40 active:scale-[0.98] transition-transform"
+        className="w-full bg-primary text-white rounded-2xl py-3.5 text-sm font-black disabled:opacity-40 active:scale-[0.98] transition-transform"
       >
         {busy ? 'Creating…' : 'Create pool'}
       </button>

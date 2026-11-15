@@ -36,7 +36,7 @@ function PoolCard({ p }: { p: PoolRow }) {
   return (
     <Link
       href={`/pools/${p.id}`}
-      className="block bg-card border border-rim rounded-2xl p-4 active:scale-[0.99] transition-transform"
+      className="block bg-card border border-rim rounded-2xl p-4 active:scale-[0.98] transition-transform"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -143,7 +143,7 @@ export default function PoolsPage() {
       {eligible?.ok && (
         <Link
           href="/pools/new"
-          className="flex items-center justify-center gap-2 w-full bg-violet-600 text-white rounded-2xl py-3.5 text-sm font-black mb-5 active:scale-[0.98] transition-transform"
+          className="flex items-center justify-center gap-2 w-full bg-primary text-white rounded-2xl py-3.5 text-sm font-black mb-5 active:scale-[0.98] transition-transform"
         >
           <Icon name="users" size={15} />Start a pool
         </Link>

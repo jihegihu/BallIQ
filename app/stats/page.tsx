@@ -74,7 +74,7 @@ export default function StatsPage() {
 
   return (
     <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
-      <Link href="/account" className="inline-flex items-center gap-1 text-sub hover:text-ink text-sm">
+      <Link href="/account" className="tap inline-flex items-center gap-1 text-sub hover:text-ink text-sm">
         <Icon name="chevronLeft" size={15} />Back
       </Link>
       <h1 className="text-2xl font-black text-ink mt-3">Stats</h1>

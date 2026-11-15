@@ -146,8 +146,7 @@ export default function RecapBanner() {
 
         <button
           onClick={() => { hapticImpact('light'); setDismissed(true); }}
-          className="w-full mt-5 py-3 rounded-xl text-sm font-black text-white transition active:scale-95"
-          style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
+          className="w-full mt-5 py-3 rounded-xl bg-primary text-sm font-black text-white transition active:scale-[0.98]"
         >
           {up ? 'Keep climbing' : 'Win it back'}
           <Icon name="arrowRight" size={16} className="ml-1.5" />

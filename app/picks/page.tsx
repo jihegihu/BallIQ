@@ -171,9 +171,9 @@ export default function PicksPage() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition ${
+            className={`tap flex-1 py-2 rounded-xl text-xs font-black transition ${
               tab === key
-                ? 'bg-violet-600 text-white'
+                ? 'bg-primary text-white'
                 : 'bg-card text-dim border border-rim hover:border-sub'
             }`}
           >
@@ -193,8 +193,7 @@ export default function PicksPage() {
             <p className="text-sm text-dim mb-5">Head to the home screen to make picks.</p>
             <Link
               href="/"
-              className="inline-block text-white font-black px-5 py-2.5 rounded-xl text-sm"
-              style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
+              className="tap inline-block bg-primary text-white font-black px-5 py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform"
             >
               Pick Games <Icon name="arrowRight" size={15} className="ml-1" />
             </Link>
@@ -248,7 +247,7 @@ export default function PicksPage() {
                 <div key={key} className="mb-1">
                   <button
                     onClick={() => toggleMonth(key)}
-                    className="w-full flex items-center justify-between py-2 px-1 border-b border-rim"
+                    className="tap w-full flex items-center justify-between py-2 px-1 border-b border-rim"
                   >
                     <span className="text-[11px] font-black text-sub uppercase tracking-widest">{label}</span>
                     <div className="flex items-center gap-1.5">

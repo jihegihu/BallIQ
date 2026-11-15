@@ -26,14 +26,14 @@ export default function EloHeader() {
           <Link
             href="/"
             onClick={() => hapticImpact('light')}
-            className="text-xl font-black tracking-tight text-ink leading-none active:scale-95 transition"
+            className="text-xl font-black tracking-tight text-ink leading-none active:scale-[0.98] transition"
           >
             Ball<span className="text-accent">IQ</span>
           </Link>
 
           <button
             onClick={() => { hapticImpact('light'); setOpen(true); }}
-            className="flex items-center gap-1.5 bg-card border border-rim rounded-full px-3 py-1.5 hover:border-accent/40 transition-all active:scale-95"
+            className="tap flex items-center gap-1.5 bg-card border border-rim rounded-full px-3 py-1.5 hover:border-accent/40 transition-all active:scale-[0.98]"
           >
             <Icon name="diamond" size={10} className="text-accent" />
             <span className="text-ink font-black text-sm tabular-nums">

@@ -77,7 +77,7 @@ export default function TourSportPicker({ matches }: { matches: Match[] }) {
         {!anyPlayable && (
           <button
             onClick={() => goto('pending')}
-            className="w-full mt-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-black"
+            className="w-full mt-4 py-2.5 rounded-xl bg-primary text-white text-sm font-black active:scale-[0.98] transition-transform"
           >
             Continue<Icon name="arrowRight" size={14} className="ml-1.5" />
           </button>

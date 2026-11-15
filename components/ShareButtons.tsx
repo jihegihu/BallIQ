@@ -43,7 +43,7 @@ export function InviteButton({ className = '' }: { className?: string }) {
         track('invite_shared');
         report(await shareOut({ text: INVITE_TEXT, url: inviteUrl(userId) }));
       }}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border border-rim bg-card px-4 py-2.5 text-sm font-black text-ink active:scale-[0.98] transition-transform ${className}`}
+      className={`tap inline-flex items-center justify-center gap-2 rounded-xl border border-rim bg-card px-4 py-2.5 text-sm font-black text-ink active:scale-[0.98] transition-transform ${className}`}
     >
       <Icon name="users" size={15} className="text-accent" />
       {notice || 'Invite a friend'}
@@ -92,7 +92,7 @@ export function ShareCardButton({ card, kind, text, label = 'Share', className =
         track('card_shared', { kind });
         report(await shareOut({ text, url: inviteUrl(userId), file: file.current }));
       }}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border border-rim bg-card px-4 py-2.5 text-sm font-black text-ink active:scale-[0.98] transition-transform ${className}`}
+      className={`tap inline-flex items-center justify-center gap-2 rounded-xl border border-rim bg-card px-4 py-2.5 text-sm font-black text-ink active:scale-[0.98] transition-transform ${className}`}
     >
       <Icon name="arrowRight" size={15} className="text-accent" />
       {notice || label}

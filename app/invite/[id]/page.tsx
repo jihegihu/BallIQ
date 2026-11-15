@@ -57,7 +57,7 @@ export default async function InvitePage({ params }: { params: Promise<{ id: str
       <div className="mt-6 space-y-2">
         <a
           href={APP_STORE_URL}
-          className="flex items-center justify-center w-full bg-violet-600 text-white rounded-2xl py-3.5 text-sm font-black"
+          className="flex items-center justify-center w-full bg-primary text-white rounded-2xl py-3.5 text-sm font-black active:scale-[0.98] transition-transform"
         >
           Get the iPhone app
         </a>

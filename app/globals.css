@@ -17,6 +17,7 @@
   --color-sub:    var(--c-sub);
   --color-dim:    var(--c-dim);
   --color-accent: var(--c-accent);
+  --color-primary: var(--c-primary);
   --color-pick:   var(--c-pick);
   --color-good:   var(--c-good);
   --color-bad:    var(--c-bad);
@@ -33,7 +34,11 @@
   --c-ink:    #FFFFFF;
   --c-sub:    #94A3B8;
   --c-dim:    #7C8AA3;   /* 5.35:1 on --c-card; #64748B was 3.92 and failed */
-  --c-accent: #A78BFA; /* violet-400 — brand */
+  --c-accent: #A78BFA; /* violet-400 — brand */
+  /* Fill for primary buttons. Not the accent: white text on the dark theme's
+     accent is 2.6:1, so buttons kept hardcoding violet-600 instead. This is
+     that colour as a token; white on it is 6:1 on either ground. */
+  --c-primary: #7C3AED;
   /*
    * Selection / locked-in colour. Deliberately NOT the violet brand accent:
    * a pick needs its own signal, and it must stay legible next to the
@@ -66,7 +71,8 @@ html.light {
   --c-ink:    #0F172A;
   --c-sub:    #1E293B;
   --c-dim:    #475569;
-  --c-accent: #7C3AED; /* violet-600 */
+  --c-accent: #7C3AED; /* violet-600 */
+  --c-primary: #7C3AED;
   --c-pick:     #0891B2; /* cyan-600 — darker so it holds on white */
   --c-pick-ink: #ECFEFF;
   /* Validated against #FFFFFF: both clear 3:1, pair clears deutan floor (8.6). */
@@ -308,4 +314,38 @@ html.light {
 @media (prefers-reduced-motion: reduce) {
   .splash-bar, .splash-drop, .splash-hop, .splash-word { animation: none; }
   .boot-splash { transition: none; }
+}
+
+/* ── Tap targets ─────────────────────────────────────────────────────────────
+   A control may look compact and still be easy to hit. .tap leaves the visible
+   size alone and extends the touch area to 44px, the size a fingertip needs.
+   The extension is centred on the control and invisible. */
+.tap { position: relative; }
+.tap::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* A control that cannot be used does not answer a press. */
+button:disabled:active { transform: none; }
+
+/* ── Reduced motion ──────────────────────────────────────────────────────────
+   One rule for everything rather than a list that each new animation has to
+   remember to join: with Reduce Motion on, nothing travels, scales or loops.
+   Animations jump to their finished frame, so every change still shows — it
+   just arrives at once. Hold-to-pick is unaffected: its fill is progress, not
+   decoration, and is driven from script. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

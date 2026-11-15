@@ -133,7 +133,7 @@ export default function PoolPage() {
   if (error) {
     return (
       <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
-        <Link href="/pools" className="inline-flex items-center gap-1 text-sub hover:text-ink text-sm">
+        <Link href="/pools" className="tap inline-flex items-center gap-1 text-sub hover:text-ink text-sm">
           <Icon name="chevronLeft" size={15} />Back
         </Link>
         <div className="bg-card border border-rim rounded-2xl p-4 mt-4 text-sm text-sub">{error}</div>
@@ -161,7 +161,7 @@ export default function PoolPage() {
 
   return (
     <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
-      <Link href="/pools" className="inline-flex items-center gap-1 text-sub hover:text-ink text-sm">
+      <Link href="/pools" className="tap inline-flex items-center gap-1 text-sub hover:text-ink text-sm">
         <Icon name="chevronLeft" size={15} />Back
       </Link>
 
@@ -208,7 +208,7 @@ export default function PoolPage() {
             <button
               disabled={busy}
               onClick={async () => { if (await act('join')) await load(); }}
-              className="flex-1 bg-violet-600 text-white rounded-xl py-2.5 text-sm font-black disabled:opacity-40"
+              className="flex-1 bg-primary text-white rounded-xl py-2.5 text-sm font-black disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               Join for {pool.stake} Elo
             </button>
@@ -337,7 +337,7 @@ export default function PoolPage() {
                 <button
                   disabled={busy}
                   onClick={async () => { if (await act('invite', { userIds: [f.id] })) await load(); }}
-                  className="text-xs font-black text-accent disabled:opacity-40"
+                  className="tap text-xs font-black text-accent disabled:opacity-40"
                 >
                   Invite
                 </button>

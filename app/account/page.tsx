@@ -160,9 +160,9 @@ export default function AccountPage() {
               <button
                 key={t}
                 onClick={() => setTheme(t)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                className={`tap px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
                   theme === t
-                    ? 'bg-violet-600 text-white shadow-sm'
+                    ? 'bg-primary text-white shadow-sm'
                     : 'text-dim hover:text-sub'
                 }`}
               >
@@ -193,9 +193,9 @@ export default function AccountPage() {
                 key={String(on)}
                 disabled={notifyOn === null}
                 onClick={() => setNotifications(on)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all disabled:opacity-40 ${
+                className={`tap px-3 py-1.5 rounded-lg text-xs font-black transition-all disabled:opacity-40 ${
                   notifyOn === on
-                    ? 'bg-violet-600 text-white shadow-sm'
+                    ? 'bg-primary text-white shadow-sm'
                     : 'text-dim hover:text-sub'
                 }`}
               >
@@ -227,7 +227,7 @@ export default function AccountPage() {
         </div>
         <button
           onClick={() => startTour(user.picks.length, true)}
-          className="px-3 py-1.5 rounded-xl border border-rim text-xs font-black text-sub hover:border-accent/40 hover:text-accent transition"
+          className="tap px-3 py-1.5 rounded-xl border border-rim text-xs font-black text-sub hover:border-accent/40 hover:text-accent transition"
         >
           Replay <Icon name="arrowRight" size={14} className="ml-1" />
         </button>
@@ -271,7 +271,7 @@ export default function AccountPage() {
         {!confirmDel ? (
           <button
             onClick={() => setConfirmDel(true)}
-            className="w-full text-[11px] font-bold text-dim hover:text-bad py-2 transition"
+            className="tap w-full text-[11px] font-bold text-dim hover:text-bad py-2 transition"
           >
             Delete account
           </button>
@@ -293,7 +293,7 @@ export default function AccountPage() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl bg-red-500/90 text-white text-sm font-black disabled:opacity-50 active:scale-95 transition"
+                className="flex-1 py-2.5 rounded-xl bg-red-500/90 text-white text-sm font-black disabled:opacity-50 active:scale-[0.98] transition"
               >
                 {deleting ? 'Deleting…' : 'Delete forever'}
               </button>

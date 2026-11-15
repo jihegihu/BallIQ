@@ -19,7 +19,7 @@ export default function GameBetTable({ match }: { match: Match }) {
       {/* Back — same affordance as the rest of the app rather than bare text */}
       <button
         onClick={() => { hapticImpact('light'); router.back(); }}
-        className="flex items-center gap-1 text-sub hover:text-ink text-sm font-bold mb-4 transition active:scale-95"
+        className="tap flex items-center gap-1 text-sub hover:text-ink text-sm font-bold mb-4 transition active:scale-[0.98]"
       >
         <Icon name="chevronLeft" size={16} /> Back
       </button>

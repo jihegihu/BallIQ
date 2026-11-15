@@ -8,7 +8,7 @@ export const metadata = { title: 'Privacy Policy · BallIQ' };
 export default function PrivacyPage() {
   return (
     <main className="selectable min-h-screen max-w-md mx-auto px-5 pt-6 pb-28">
-      <Link href="/account" className="inline-flex items-center gap-1 text-sub hover:text-ink text-sm"><Icon name="chevronLeft" size={15} />Back</Link>
+      <Link href="/account" className="tap inline-flex items-center gap-1 text-sub hover:text-ink text-sm"><Icon name="chevronLeft" size={15} />Back</Link>
       <h1 className="text-2xl font-black text-ink mt-3 mb-1">Privacy Policy</h1>
       <p className="text-[11px] text-dim mb-6">Last updated: November 2026</p>
 
