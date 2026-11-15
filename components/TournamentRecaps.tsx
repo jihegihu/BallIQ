@@ -31,7 +31,7 @@ export default function TournamentRecaps({ picks }: { picks: UserPick[] }) {
   if (recaps.length === 0) return null;
 
   return (
-    <div className="bg-card border border-rim rounded-xl p-3 mb-3">
+    <div className="bg-card border border-rim rounded-2xl p-3 mb-3">
       <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">Tournament Recaps</p>
       <div className="space-y-2">
         {recaps.map(({ t, tally }) => {

@@ -35,7 +35,7 @@ function LongPressCard({ onLongPress, children }: { onLongPress: () => void; chi
         if ((e.target as HTMLElement).closest('[data-bet-button]')) return;
         handlers.onPointerDown(e);
       }}
-      className="bg-card border border-rim rounded-2xl overflow-hidden select-none elev-1"
+      className="bg-card border border-rim rounded-2xl overflow-hidden select-none"
     >
       {children}
     </div>
@@ -201,7 +201,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
             onClick={() => { hapticImpact('light'); setSport(s); }}
             className={`shrink-0 py-2.5 px-5 rounded-xl text-sm font-black tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${
               sport === s
-                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                ? 'bg-primary text-white'
                 : 'bg-card text-sub border border-rim hover:border-sub'
             }`}
           >

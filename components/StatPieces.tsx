@@ -14,24 +14,28 @@
 
 import type { StatRow } from '@/lib/playerStats';
 
-/** A headline number. Just the figure and what it is. */
-export function StatTile({
-  label,
-  value,
-  sub,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: 'neutral' | 'good' | 'bad';
-}) {
-  const toneCls = tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink';
+type StripItem = { label: string; value: string; sub?: string; tone?: 'neutral' | 'good' | 'bad' };
+
+/**
+ * A few headline figures side by side, in one card with hairline dividers.
+ * It used to be one box per figure: a row of three bordered tiles reads as
+ * three separate things, when it is one group of related numbers.
+ */
+export function StatStrip({ items }: { items: StripItem[] }) {
   return (
-    <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
-      <p className="text-xs text-dim uppercase tracking-wide">{label}</p>
-      <p className={`text-lg font-black tabular-nums leading-tight mt-0.5 ${toneCls}`}>{value}</p>
-      {sub && <p className="text-xs text-dim tabular-nums">{sub}</p>}
+    <div
+      className="grid bg-card border border-rim rounded-2xl divide-x divide-rim"
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+    >
+      {items.map(({ label, value, sub, tone = 'neutral' }) => (
+        <div key={label} className="px-3 py-2.5 min-w-0">
+          <p className="text-xs text-dim uppercase tracking-wide truncate">{label}</p>
+          <p className={`text-lg font-black tabular-nums leading-tight mt-0.5 ${
+            tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink'
+          }`}>{value}</p>
+          {sub && <p className="text-xs text-dim tabular-nums truncate">{sub}</p>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -54,7 +58,7 @@ export function BreakdownTable({ title, rows }: { title: string; rows: StatRow[]
   if (rows.length === 0) return null;
   const cols = 'grid grid-cols-[minmax(0,1fr)_3.75rem_2.75rem_3.25rem] gap-x-2 items-baseline';
   return (
-    <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
+    <div className="bg-card border border-rim rounded-2xl px-3 py-2.5">
       <div className={`${cols} pb-1.5 mb-0.5 border-b border-rim text-[10px] text-dim uppercase tracking-wide`}>
         <span className="font-bold tracking-widest">{title}</span>
         <span className="text-right">Record</span>

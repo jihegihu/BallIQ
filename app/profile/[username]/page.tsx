@@ -82,23 +82,23 @@ export default async function PublicProfilePage({
       </div>
 
       {/* Elo stats */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="bg-card border border-rim rounded-xl p-3 text-center">
+      <div className="grid grid-cols-2 gap-px bg-rim border border-rim rounded-2xl overflow-hidden mb-4">
+        <div className="bg-card p-3 text-center [&:last-child:nth-child(odd)]:col-span-2">
           <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Global Elo</p>
           <p className="text-2xl font-black text-ink tabular-nums">{(u.global_elo as number).toLocaleString()}</p>
         </div>
-        <div className="bg-card border border-rim rounded-xl p-3 text-center">
+        <div className="bg-card p-3 text-center [&:last-child:nth-child(odd)]:col-span-2">
           <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Season Elo</p>
           <p className="text-2xl font-black text-ink tabular-nums">{(u.season_elo as number).toLocaleString()}</p>
         </div>
         {winRate !== null && (
-          <div className="bg-card border border-rim rounded-xl p-3 text-center">
+          <div className="bg-card p-3 text-center [&:last-child:nth-child(odd)]:col-span-2">
             <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Win Rate</p>
             <p className="text-xl font-black text-ink">{winRate}%</p>
             <p className="text-[9px] text-dim">{wins}W–{losses}L recent</p>
           </div>
         )}
-        <div className="bg-card border border-rim rounded-xl p-3 text-center">
+        <div className="bg-card p-3 text-center [&:last-child:nth-child(odd)]:col-span-2">
           <p className="text-[10px] text-dim uppercase tracking-wide mb-1">Streak</p>
           <p className="text-xl font-black text-ink">
             {(u.current_streak as number) > 0
@@ -110,11 +110,11 @@ export default async function PublicProfilePage({
 
       {/* Sport Ratings */}
       <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">Sport Ratings</p>
-      <div className="grid grid-cols-2 gap-2 mb-5">
+      <div className="grid grid-cols-2 gap-px bg-rim border border-rim rounded-2xl overflow-hidden mb-5">
         {SPORT_COLS.map(({ key, label }) => {
           const elo  = (u[key] as number) ?? START_ELO;
           return (
-            <div key={key} className="bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center justify-between">
+            <div key={key} className={`bg-card px-3 py-2.5 flex items-center justify-between [&:last-child:nth-child(odd)]:col-span-2`}>
               <div>
                 <p className="text-[10px] text-dim font-black uppercase tracking-widest">{label}</p>
                 <p className="text-sm font-black text-ink tabular-nums">{elo.toLocaleString()}</p>
@@ -129,7 +129,7 @@ export default async function PublicProfilePage({
       {picks.length > 0 && (
         <>
           <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">Recent Results</p>
-          <div className="flex flex-col gap-1.5">
+          <div className="bg-card border border-rim rounded-2xl divide-y divide-rim overflow-hidden">
             {picks.map((p: Row) => {
               const outcome  = p.outcome as string;
               const delta    = p.elo_delta as number | null;
@@ -141,7 +141,7 @@ export default async function PublicProfilePage({
                 outcome === 'loss' ? 'LOST' : 'PUSH';
 
               return (
-                <div key={p.id as string} className="bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center gap-3">
+                <div key={p.id as string} className="px-3 py-2.5 flex items-center gap-3">
                   <span className={`text-[10px] font-black w-10 shrink-0 ${outcomeColor}`}>{badge}</span>
                   <p className="flex-1 text-xs text-sub truncate">
                     {(p.sport as string) && <span className="text-accent/80 font-bold">{p.sport as string} · </span>}

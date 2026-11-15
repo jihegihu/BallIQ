@@ -8,6 +8,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Icon from '@/components/Icon';
 import TeamAvatar from '@/components/TeamAvatar';
 import CreatorBadge from '@/components/CreatorBadge';
+import { StatStrip } from '@/components/StatPieces';
 import { hapticImpact } from '@/lib/haptics';
 import { ShareCardButton } from '@/components/ShareButtons';
 
@@ -178,17 +179,12 @@ export default function PoolPage() {
       </div>
 
       {/* The pot */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {[
-          ['Playing', String(data.joined)],
-          ['Stake', `${pool.stake} Elo`],
-          ['Winner takes', `+${data.potentialWin}`],
-        ].map(([label, value]) => (
-          <div key={label} className="bg-card border border-rim rounded-xl p-3">
-            <p className="text-[10px] text-dim uppercase tracking-wide mb-1">{label}</p>
-            <p className="text-base font-black text-ink tabular-nums">{value}</p>
-          </div>
-        ))}
+      <div className="mb-4">
+        <StatStrip items={[
+          { label: 'Playing', value: String(data.joined) },
+          { label: 'Stake', value: `${pool.stake} Elo` },
+          { label: 'Winner takes', value: `+${data.potentialWin}` },
+        ]} />
       </div>
 
       {pool.phase === 'cancelled' && (
@@ -236,8 +232,8 @@ export default function PoolPage() {
             ? [['away', g.away], ['draw', 'Draw'], ['home', g.home]]
             : [['away', g.away], ['home', g.home]];
           return (
-            <div key={g.id} className="bg-card border border-rim rounded-2xl p-3">
-              <div className="flex items-center justify-between text-[10px] text-dim mb-2">
+            <div key={g.id} className="bg-card border border-rim rounded-2xl p-2">
+              <div className="flex items-center justify-between text-[10px] text-dim px-1.5 pt-1 mb-2">
                 <span>{when(g.at)}</span>
                 {g.homeScore != null && g.awayScore != null
                   ? <span className="font-bold text-sub tabular-nums">{g.awayScore}–{g.homeScore}{g.result ? ' · Final' : ''}</span>
@@ -255,7 +251,7 @@ export default function PoolPage() {
                       disabled={!playing || g.started || busy}
                       onClick={() => pick(g, side)}
                       aria-pressed={mine}
-                      className={`flex-1 min-w-0 rounded-xl border px-2 py-2.5 text-center transition disabled:cursor-default ${
+                      className={`flex-1 min-w-0 rounded-lg border px-2 py-2.5 text-center transition disabled:cursor-default ${
                         mine && won  ? 'bg-good/15 border-good' :
                         lost         ? 'bg-bad/10 border-bad/60' :
                         mine         ? 'bg-pick/15 border-pick' :

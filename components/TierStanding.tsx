@@ -58,7 +58,7 @@ export default function TierStanding({ standing, sportLabel }: {
   const myIdx  = TIERS.findIndex((t) => t.label === myTier);   // 0 = top rung
 
   return (
-    <section className="bg-card border border-rim rounded-2xl px-4 py-3.5 elev-1">
+    <section className="bg-card border border-rim rounded-2xl px-4 py-3.5">
       {/* Rungs run top-down from the highest, so the climb reads upward. */}
       <ol className="relative">
         {TIERS.map((t, i) => {

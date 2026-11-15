@@ -41,7 +41,7 @@ export default function TourSportPicker({ matches }: { matches: Match[] }) {
     <div data-sheet role="dialog" aria-modal="true" aria-label="Welcome" className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-      <div className="relative w-full max-w-sm bg-card border border-rim rounded-2xl p-6 elev-3">
+      <div className="relative w-full max-w-sm bg-card border border-rim/50 rounded-2xl p-6 elev-3">
         <div className="flex justify-center mb-3">
           <Icon name="diamond" size={40} strokeWidth={1.5} className="text-accent" />
         </div>

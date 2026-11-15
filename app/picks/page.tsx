@@ -327,7 +327,7 @@ function PendingCard({ pick, kFactor, matchScore }: { pick: UserPick; kFactor: n
   const isFinal  = matchScore?.status === 'completed';
 
   return (
-    <div className={`bg-card border rounded-xl px-3 py-2.5 flex items-center gap-3 ${
+    <div className={`bg-card border rounded-2xl px-3 py-2.5 flex items-center gap-3 ${
       isLive ? 'border-emerald-500/30' : 'border-rim'
     }`}>
       <TeamAvatar teamName={pickTeam(pick)} size="xs" />
@@ -398,7 +398,7 @@ function ResultCard({ pick }: { pick: UserPick }) {
     .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
-    <div className={`bg-card border ${cfg.border} rounded-xl px-3 py-2.5`}>
+    <div className={`bg-card border ${cfg.border} rounded-2xl px-3 py-2.5`}>
       <div className="flex items-center gap-3">
         <TeamAvatar teamName={pickTeam(pick)} size="xs" />
 

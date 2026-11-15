@@ -59,7 +59,7 @@ export default function LiveStrip({
               key={m.id}
               href={`/matches/${m.id}`}
               onClick={() => hapticImpact('light')}
-              className="shrink-0 w-40 bg-card border border-emerald-500/25 rounded-xl p-2.5 active:scale-[0.98] transition elev-1"
+              className="shrink-0 w-40 bg-card border border-emerald-500/25 rounded-2xl p-2.5 active:scale-[0.98] transition"
             >
               {(['away', 'home'] as const).map((side) => {
                 const team  = side === 'home' ? m.homeTeam : m.awayTeam;

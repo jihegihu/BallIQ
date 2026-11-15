@@ -255,10 +255,8 @@ export default function LeaderboardPage() {
 
       {/* Loading */}
       {view !== 'climb' && loading && (
-        <div className="flex flex-col gap-2">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-14 bg-card border border-rim rounded-xl animate-pulse" />
-          ))}
+        <div className="bg-card border border-rim rounded-2xl divide-y divide-rim overflow-hidden animate-pulse">
+          {[...Array(8)].map((_, i) => <div key={i} className="h-14" />)}
         </div>
       )}
 
@@ -287,7 +285,7 @@ export default function LeaderboardPage() {
 
       {/* Rows */}
       {view !== 'climb' && !loading && !error && rows.length > 0 && (
-        <div className="flex flex-col gap-1.5">
+        <div className="bg-card border border-rim rounded-2xl divide-y divide-rim overflow-hidden">
           {rows.map((row, idx) => {
             const elo  = row[ELO_KEY[sport]] as number;
             const isMe = row.id === myId;
@@ -296,11 +294,7 @@ export default function LeaderboardPage() {
             return (
               <div
                 key={row.id}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition ${
-                  isMe
-                    ? 'bg-accent/5 border-accent/30'
-                    : 'bg-card border-rim'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 transition ${isMe ? 'bg-accent/10' : ''}`}
               >
                 {/* Rank */}
                 <div className="w-7 text-center shrink-0">

@@ -18,7 +18,7 @@ import { useMemo } from 'react';
 import Icon from '@/components/Icon';
 import EloSparkline from '@/components/EloSparkline';
 import TournamentRecaps from '@/components/TournamentRecaps';
-import { StatTile, BreakdownTable, NetElo } from '@/components/StatPieces';
+import { StatStrip, BreakdownTable, NetElo } from '@/components/StatPieces';
 import { computePlayerStats, type StatRow } from '@/lib/playerStats';
 import type { UserPick } from '@/types';
 
@@ -101,20 +101,20 @@ export default function StatsPanel({ results, allPicks }: { results: UserPick[];
       </section>
 
       {/* ── Runs ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-2">
-        <StatTile
-          label="Right now"
-          value={s.run ? `${s.run.kind}${s.run.length}` : '—'}
-          sub={s.run ? (s.run.kind === 'W' ? 'wins in a row' : 'losses in a row') : undefined}
-          tone={s.run ? (s.run.kind === 'W' ? 'good' : 'bad') : 'neutral'}
-        />
-        <StatTile label="Best run" value={s.bestRun > 0 ? String(s.bestRun) : '—'} sub={s.bestRun > 0 ? 'wins in a row' : undefined} />
-        <StatTile label="Best pick" value={s.bestPick > 0 ? `+${s.bestPick}` : '—'} sub={s.bestPick > 0 ? 'Elo' : undefined} tone={s.bestPick > 0 ? 'good' : 'neutral'} />
-      </div>
+      <StatStrip items={[
+        {
+          label: 'Right now',
+          value: s.run ? `${s.run.kind}${s.run.length}` : '—',
+          sub: s.run ? (s.run.kind === 'W' ? 'wins in a row' : 'losses in a row') : undefined,
+          tone: s.run ? (s.run.kind === 'W' ? 'good' : 'bad') : 'neutral',
+        },
+        { label: 'Best run', value: s.bestRun > 0 ? String(s.bestRun) : '—', sub: s.bestRun > 0 ? 'wins in a row' : undefined },
+        { label: 'Best pick', value: s.bestPick > 0 ? `+${s.bestPick}` : '—', sub: s.bestPick > 0 ? 'Elo' : undefined, tone: s.bestPick > 0 ? 'good' : 'neutral' },
+      ]} />
 
       {/* ── What to do more and less of ────────────────────────────────────── */}
       {(s.strongest || s.weakest) && (
-        <div className="bg-card border border-rim rounded-xl px-3 py-3 flex flex-col gap-1.5">
+        <div className="bg-card border border-rim rounded-2xl px-3 py-3 flex flex-col gap-1.5">
           {s.strongest && <Note icon="trendUp" tone="text-good" label="Strongest:" row={s.strongest} />}
           {s.weakest && <Note icon="trendDown" tone="text-bad" label="Costing you:" row={s.weakest} />}
         </div>
@@ -125,9 +125,11 @@ export default function StatsPanel({ results, allPicks }: { results: UserPick[];
       <EloSparkline days={30} />
 
       {/* ── Where the rating comes from ────────────────────────────────────── */}
-      <BreakdownTable title="By sport" rows={s.bySport} />
-      <BreakdownTable title="By pick type" rows={s.byType} />
-      <BreakdownTable title="By odds" rows={s.byOdds} />
+      <div className="mt-3 flex flex-col gap-2">
+        <BreakdownTable title="By sport" rows={s.bySport} />
+        <BreakdownTable title="By pick type" rows={s.byType} />
+        <BreakdownTable title="By odds" rows={s.byOdds} />
+      </div>
 
       <TournamentRecaps picks={allPicks} />
     </div>

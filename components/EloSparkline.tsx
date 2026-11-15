@@ -60,7 +60,7 @@ export default function EloSparkline({ days = 30 }: { days?: number }) {
   const tone = up ? 'var(--c-good)' : 'var(--c-bad)';
 
   return (
-    <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
+    <div className="bg-card border border-rim rounded-2xl px-3 py-2.5">
       <div className="flex items-baseline justify-between mb-1.5">
         <p className="text-xs text-dim uppercase tracking-widest font-bold">
           Last {days} days

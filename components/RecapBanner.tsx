@@ -100,7 +100,7 @@ export default function RecapBanner() {
       />
 
       {/* Card */}
-      <div className="relative w-full max-w-sm bg-card border border-rim rounded-2xl p-6 pb-5 elev-3 text-center">
+      <div className="relative w-full max-w-sm bg-card border border-rim/50 rounded-2xl p-6 pb-5 elev-3 text-center">
         <p className="text-[10px] text-dim uppercase tracking-widest font-bold mb-2">
           Your picks settled
         </p>

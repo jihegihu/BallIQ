@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/Icon';
-import { StatTile } from '@/components/StatPieces';
+import { StatStrip } from '@/components/StatPieces';
 
 type Stats = {
   generatedAt: string;
@@ -85,9 +85,11 @@ export default function StatsPage() {
 
       {stats && (
         <>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <StatTile label="Accounts" value={String(stats.totals.accounts)} sub={`${stats.totals.withAPick} have picked`} />
-            <StatTile label="Active today" value={String(stats.totals.activeToday)} sub={`${stats.totals.active7d} in 7 days`} />
+          <div className="mb-4">
+            <StatStrip items={[
+              { label: 'Accounts', value: String(stats.totals.accounts), sub: `${stats.totals.withAPick} have picked` },
+              { label: 'Active today', value: String(stats.totals.activeToday), sub: `${stats.totals.active7d} in 7 days` },
+            ]} />
           </div>
 
           <Card title="New accounts, last 30 days" note="Did they start playing after signing up?">

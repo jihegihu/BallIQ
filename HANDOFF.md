@@ -146,3 +146,16 @@ tagged `before-design-pass`; the pass is a single commit, so `git revert` on it 
 - **Reduced motion** is one global rule in `globals.css`; new animations are covered automatically.
 - Not done yet (changes how screens look, needs approval): text sizes, spacing and card borders,
   border-vs-shadow, corner radius roles.
+
+## Visual pass (2026-11-15)
+Astryx items 3, 6 and 8. State before it is tagged `before-design-pass-2`; the pass is one commit.
+- **Radius roles:** control 12px (`rounded-xl`), card 16px (`rounded-2xl`), sheet 24px top
+  (`rounded-t-3xl`), small chips 6–8px. Nested corners stay concentric: inner radius = outer
+  radius minus the padding between them (segmented controls: 12 outer, 4 padding, 8 inner).
+- **One edge per surface:** in-page cards use a border, no shadow. Floating surfaces (sheets,
+  dialogs) use `elev-3` with a faint `border-rim/50`. Exceptions with a reason: the selected
+  segment's `shadow-sm` marks selection, and the coach card and pending bar keep an accent
+  border because it carries meaning.
+- **Space before boxes:** lists are one card with `divide-y` (leaderboard, profile results),
+  related figures are one `StatStrip` with dividers, and groups get more space between them
+  than inside them.
