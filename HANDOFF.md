@@ -109,3 +109,16 @@ rankings view). State is saved per account id. Accounts with picks never see it;
 `lib/creator.ts` holds the creator's user id; `CreatorBadge` renders beside that account's
 name. Keyed on id because usernames re-sync from Clerk on every load (`/api/picks` GET), so
 a rename done only in Supabase is overwritten — change the name in the Clerk dashboard.
+
+## Analytics, invites, share cards, sport ladders (2026-11-15)
+- **Analytics** are first-party: `track()` in `lib/events.ts` → `POST /api/events` → `events`
+  table (needs `supabase/migration-010-events.sql`). Closed list of event names. The creator's
+  account sees `/stats` (linked from Account); the arithmetic is `lib/stats.ts`.
+- **Invite links:** `balliq.dev/invite/<user id>` (public page). Signing up in the same browser
+  makes both accounts follow each other (`POST /api/invite`). The iPhone app does not share
+  storage with Safari, so app installs are not auto-connected; that needs universal links.
+- **Share cards:** `GET /api/share/card?kind=rank|pool&id=` renders a PNG with `next/og` from
+  `lib/shareCard.tsx`. All numbers come from the database for the caller.
+- **Sport ladders:** the climb view follows the sport tabs. A sport's board and ladder count
+  only accounts with a decided pick in that sport. Leaderboard queries page past the
+  1,000-row cap.
