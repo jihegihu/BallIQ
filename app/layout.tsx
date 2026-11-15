@@ -6,6 +6,7 @@ import DBHydrator from "@/components/DBHydrator";
 import NativeShell from "@/components/NativeShell";
 import AppChrome from "@/components/AppChrome";
 import ThemeProvider from "@/components/ThemeProvider";
+import BootSplash from "@/components/BootSplash";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -44,6 +45,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </head>
         <body className="min-h-full flex flex-col bg-base">
           <ThemeProvider>
+            {/* First thing in the body so it is in the first paint: the logo
+                covers the app while it loads on a cold start. */}
+            <BootSplash />
             {/* In root layout (not AppChrome) so splash-hide also runs on bare
                 routes like /sign-in — first screen a fresh install sees. */}
             <NativeShell />

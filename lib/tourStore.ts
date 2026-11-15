@@ -13,10 +13,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { track } from './events';
 
-export type TourStep = 'sport' | 'picks' | 'pending' | 'results' | 'ranks' | 'climb';
+export type TourStep = 'sport' | 'picks' | 'pending' | 'results' | 'ranks' | 'climb' | 'h2h';
 export type TourSport = 'NBA' | 'NFL' | 'MLB' | 'SOCCER' | 'TENNIS';
 
-export const TOUR_STEPS: TourStep[] = ['sport', 'picks', 'pending', 'results', 'ranks', 'climb'];
+export const TOUR_STEPS: TourStep[] = ['sport', 'picks', 'pending', 'results', 'ranks', 'climb', 'h2h'];
 
 /** Picks a new user makes before the walkthrough moves on. */
 export const TOUR_PICKS_NEEDED = 2;
@@ -29,6 +29,7 @@ export const TOUR_ROUTE: Record<TourStep, string> = {
   results: '/picks',
   ranks:   '/leaderboard',
   climb:   '/leaderboard',
+  h2h:     '/pools',
 };
 
 interface TourStore {

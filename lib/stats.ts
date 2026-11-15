@@ -76,6 +76,7 @@ export function computeStats(users: StatsUser[], picks: StatsPick[], events: Sta
     { label: 'Saw results',       n: step('results') },
     { label: 'Saw rankings',      n: step('ranks') },
     { label: 'Saw the ladder',    n: step('climb') },
+    { label: 'Saw head to head',  n: step('h2h') },
     { label: 'Finished',          n: reached('tour_finished') },
   ];
 

@@ -20,6 +20,7 @@ import { useTourStore, TOUR_STEPS, TOUR_ROUTE, TOUR_PICKS_NEEDED, type TourStep 
 import { START_ELO } from '@/lib/elo';
 import { tierFor } from '@/lib/tiers';
 import { track } from '@/lib/events';
+import { POOL_STAKE, POOL_MIN_SETTLED_PICKS } from '@/lib/pools';
 
 const COPY: Record<Exclude<TourStep, 'sport' | 'picks'>, { title: string; body: string }> = {
   pending: {
@@ -28,7 +29,7 @@ const COPY: Record<Exclude<TourStep, 'sport' | 'picks'>, { title: string; body: 
   },
   results: {
     title: 'Results and stats',
-    body:  'Settled picks move to Results with the Elo you won or lost, and your record builds up above them. These are examples.',
+    body:  'Settled picks move to Results with the Elo you won or lost. Your record builds up above them, with the full breakdown under Stats. These are examples.',
   },
   ranks: {
     title: 'See where you rank',
@@ -37,6 +38,11 @@ const COPY: Record<Exclude<TourStep, 'sport' | 'picks'>, { title: string; body: 
   climb: {
     title: 'Your climb',
     body:  `You start at ${START_ELO} in ${tierFor(START_ELO).label}. Each tier above is a rating you have to reach.`,
+  },
+  // Shown, not played: pools are locked until a new account has a track record.
+  h2h: {
+    title: 'Head to Head',
+    body:  `Play your friends for rating. Everyone stakes ${POOL_STAKE} Elo on a slate of games and the most correct picks takes the pot. It unlocks once ${POOL_MIN_SETTLED_PICKS} of your picks have settled.`,
   },
 };
 

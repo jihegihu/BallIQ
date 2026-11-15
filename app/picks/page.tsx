@@ -8,14 +8,12 @@ import { UserPick } from '@/types';
 import { calculateEloDelta, getKFactor } from '@/lib/elo';
 import TournamentRecaps from '@/components/TournamentRecaps';
 import { summarizeRecord } from '@/lib/record';
-import { PICK_LABEL } from '@/lib/pickLabels';
-import { StatTile, BreakdownRow } from '@/components/StatPieces';
-import EloSparkline from '@/components/EloSparkline';
+import StatsPanel from '@/components/StatsPanel';
 import { useTourStore } from '@/lib/tourStore';
 import { ExampleStats, ExampleResultsLabel, EXAMPLE_RESULTS } from '@/components/TourExamples';
 import Icon from '@/components/Icon';
 
-type Tab = 'pending' | 'results';
+type Tab = 'pending' | 'results' | 'stats';
 
 // ── Label builders ────────────────────────────────────────────────────────────
 
@@ -79,7 +77,6 @@ export default function PicksPage() {
     tourActive && tourStep === 'results' ? 'results' : tabState;
   const [matchScores, setMatchScores]   = useState<Record<string, MatchScore>>({});
   const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(new Set());
-  const [statsOpen, setStatsOpen]       = useState(false);
 
   const user     = useUserStore((s) => s.user);
   const hydrated = useUserStore((s) => s.hydrated);
@@ -134,53 +131,6 @@ export default function PicksPage() {
 
   const { wins, losses, winRate } = summarizeRecord(results.map((p) => p.outcome));
   const netElo     = results.reduce((sum, p) => sum + (p.eloDelta ?? 0), 0);
-  const biggestWin = results.reduce((max, p) => Math.max(max, p.eloDelta ?? 0), 0);
-
-  // By bet type
-  const BET_TYPES = ['moneyline', 'spread', 'over_under'] as const;
-  // Every breakdown goes through summarizeRecord, same as the banner above.
-  // These used to count `total` as every row and render `w–(total-w)`, which
-  // silently booked each push and each void as a LOSS — so "by pick type"
-  // disagreed with the headline record and with what you can read off your
-  // own results list.
-  const byBetType = Object.fromEntries(
-    BET_TYPES.map((bt) => {
-      const sub = results.filter((p) => p.betType === bt);
-      return [bt, {
-        ...summarizeRecord(sub.map((p) => p.outcome)),
-        elo: sub.reduce((s, p) => s + (p.eloDelta ?? 0), 0),
-      }];
-    })
-  ) as Record<string, ReturnType<typeof summarizeRecord> & { elo: number }>;
-
-  // By sport
-  const sportBuckets = new Map<string, UserPick[]>();
-  for (const p of results) {
-    if (!p.sport) continue;
-    const list = sportBuckets.get(p.sport) ?? [];
-    list.push(p);
-    sportBuckets.set(p.sport, list);
-  }
-  const topSports = [...sportBuckets.entries()]
-    .map(([sport, list]) => [sport, {
-      ...summarizeRecord(list.map((p) => p.outcome)),
-      elo: list.reduce((s, p) => s + (p.eloDelta ?? 0), 0),
-    }] as const)
-    .filter(([, v]) => v.settled > 0)
-    .sort((a, b) => b[1].elo - a[1].elo)
-    .slice(0, 4);
-
-  // Last 10 — the last ten picks that actually went one way or the other.
-  // Including pushes and voids made "7/10" mean something different here than
-  // it did anywhere else on the page.
-  const last10Rec   = summarizeRecord(
-    results.filter((p) => p.outcome === 'win' || p.outcome === 'loss').slice(0, 10).map((p) => p.outcome),
-  );
-  const last10Wins  = last10Rec.wins;
-  const last10Count = last10Rec.decided;
-  const last10Rate  = last10Rec.winRate;
-
-  const BET_LABEL = PICK_LABEL;
 
   // Picks live in the store, so there's no server suspense boundary to hang a
   // loading.tsx off — show the skeleton until the first hydrate lands.
@@ -210,110 +160,43 @@ export default function PicksPage() {
     <main className="min-h-screen pb-28 max-w-md mx-auto px-4 pt-4">
       <h1 className="text-2xl font-black text-ink mb-4">My Picks</h1>
 
-      {/* ── Stats ──────────────────────────────────────────────────────────
-          Collapsed to a single summary strip by default. The picks themselves
-          are what people open this page for; the full breakdown is one tap
-          away rather than three screens of scrolling in front of them. */}
-      {results.length > 0 && (
-        <div className="mb-4">
-          <button
-            onClick={() => setStatsOpen((v) => !v)}
-            className="w-full bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center justify-between active:scale-[0.99] transition"
-          >
-            <div className="flex items-center gap-3 text-sm font-black tabular-nums">
-              <span>
-                <span className="text-good">{wins}W</span>
-                <span className="text-dim mx-0.5">–</span>
-                <span className="text-bad">{losses}L</span>
-              </span>
-              {winRate !== null && <span className="text-sub text-xs font-bold">{winRate}%</span>}
-              <span className={netElo >= 0 ? 'text-good' : 'text-bad'}>
-                {netElo >= 0 ? '+' : ''}{netElo} Elo
-              </span>
-            </div>
-            <span className="flex items-center gap-1 text-[10px] font-bold text-dim uppercase tracking-widest">
-              Stats <Icon name={statsOpen ? 'chevronDown' : 'chevronRight'} size={14} />
+      {/* ── Record ─────────────────────────────────────────────────────────
+          One line, always visible, that opens the Stats tab. The full
+          breakdown used to be folded up inside this strip, where most people
+          never found it. Hidden on the Stats tab itself, which opens with the
+          same figures. */}
+      {results.length > 0 && tab !== 'stats' && (
+        <button
+          onClick={() => setTab('stats')}
+          className="w-full mb-4 bg-card border border-rim rounded-xl px-3 py-2.5 flex items-center justify-between active:scale-[0.99] transition"
+        >
+          <div className="flex items-center gap-3 text-sm font-black tabular-nums">
+            <span>
+              <span className="text-good">{wins}W</span>
+              <span className="text-dim mx-0.5">–</span>
+              <span className="text-bad">{losses}L</span>
             </span>
-          </button>
-
-          {statsOpen && (
-            <div className="mt-2 flex flex-col gap-2">
-              {/* Headline figures. Three uniform tiles — these are numbers,
-                  not charts, so they get no plot. */}
-              <div className="grid grid-cols-3 gap-2">
-                <StatTile
-                  label="Best"
-                  value={biggestWin > 0 ? `+${biggestWin}` : '—'}
-                  sub={biggestWin > 0 ? 'Elo' : undefined}
-                  tone={biggestWin > 0 ? 'good' : 'neutral'}
-                />
-                <StatTile
-                  label="Last 10"
-                  value={last10Rate !== null ? `${last10Rate}%` : '—'}
-                  sub={last10Rate !== null ? `${last10Wins}/${last10Count}` : undefined}
-                  tone={last10Rate === null ? 'neutral' : last10Rate >= 50 ? 'good' : 'bad'}
-                />
-                <StatTile
-                  label="Streak"
-                  value={user.currentStreak > 0 ? `${user.currentStreak}` : '—'}
-                  sub={user.currentStreak > 0 ? 'days' : undefined}
-                />
-              </div>
-
-              {/* Rating trend — change over time, so this one IS a chart. */}
-              <EloSparkline days={30} />
-
-              {/* Both breakdowns share one row component: same data job, so
-                  the same form. By Sport used to be nested cards instead. */}
-              <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
-                <p className="text-xs text-dim uppercase tracking-widest font-bold mb-1">By pick type</p>
-                {BET_TYPES.filter((bt) => byBetType[bt].settled > 0).map((bt) => {
-                  const { wins, losses, pushes, winRate, elo } = byBetType[bt];
-                  return (
-                    <BreakdownRow
-                      key={bt}
-                      name={BET_LABEL[bt]}
-                      record={pushes > 0 ? `${wins}–${losses}–${pushes}` : `${wins}–${losses}`}
-                      rate={winRate ?? 0}
-                      net={elo}
-                    />
-                  );
-                })}
-              </div>
-
-              {topSports.length > 0 && (
-                <div className="bg-card border border-rim rounded-xl px-3 py-2.5">
-                  <p className="text-xs text-dim uppercase tracking-widest font-bold mb-1">By sport</p>
-                  {topSports.map(([sport, { wins, losses, pushes, winRate, elo }]) => (
-                    <BreakdownRow
-                      key={sport}
-                      name={sport}
-                      record={pushes > 0 ? `${wins}–${losses}–${pushes}` : `${wins}–${losses}`}
-                      rate={winRate ?? 0}
-                      net={elo}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Retrospective, so it belongs behind the same disclosure as
-                  the rest of the stats rather than above the live picks. */}
-              <TournamentRecaps picks={user.picks} />
-            </div>
-          )}
-        </div>
+            {winRate !== null && <span className="text-sub text-xs font-bold">{winRate}%</span>}
+            <span className={netElo >= 0 ? 'text-good' : 'text-bad'}>
+              {netElo >= 0 ? '+' : ''}{netElo} Elo
+            </span>
+          </div>
+          <span className="flex items-center gap-1 text-[10px] font-bold text-dim uppercase tracking-widest">
+            Stats <Icon name="chevronRight" size={14} />
+          </span>
+        </button>
       )}
 
       {/* With no settled picks there's no stats dropdown to tuck these into,
           but tournament picks still in flight are worth surfacing. Renders
           nothing when the user has no tournament picks at all. */}
-      {results.length === 0 && <TournamentRecaps picks={user.picks} />}
+      {results.length === 0 && tab !== 'stats' && <TournamentRecaps picks={user.picks} />}
 
       {showExamples && <ExampleStats />}
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <div className="flex gap-2 mb-5">
-        {([['pending', `Pending${pending.length > 0 ? ` (${pending.length})` : ''}`], ['results', 'Results']] as [Tab, string][]).map(([key, label]) => (
+        {([['pending', `Pending${pending.length > 0 ? ` (${pending.length})` : ''}`], ['results', 'Results'], ['stats', 'Stats']] as [Tab, string][]).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -327,6 +210,8 @@ export default function PicksPage() {
           </button>
         ))}
       </div>
+
+      {tab === 'stats' && <StatsPanel results={results} allPicks={user.picks} />}
 
       {/* ── Content ──────────────────────────────────────────────────────────── */}
       {tab === 'pending' && (

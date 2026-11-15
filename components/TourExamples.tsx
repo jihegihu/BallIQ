@@ -33,13 +33,13 @@ export function ExampleStats() {
           <span className="text-good">+84 Elo</span>
         </div>
         <span className="flex items-center gap-1 text-[10px] font-bold text-dim uppercase tracking-widest">
-          Stats <Icon name="chevronDown" size={14} />
+          Stats <Icon name="chevronRight" size={14} />
         </span>
       </div>
       <div className="grid grid-cols-3 gap-2 mt-2">
-        <StatTile label="Best" value="+31" sub="Elo" tone="good" />
-        <StatTile label="Last 10" value="70%" sub="7/10" tone="good" />
-        <StatTile label="Streak" value="4" sub="days" />
+        <StatTile label="Right now" value="W3" sub="wins in a row" tone="good" />
+        <StatTile label="Best run" value="6" sub="wins in a row" />
+        <StatTile label="Best pick" value="+31" sub="Elo" tone="good" />
       </div>
     </div>
   );

@@ -122,3 +122,15 @@ a rename done only in Supabase is overwritten — change the name in the Clerk d
 - **Sport ladders:** the climb view follows the sport tabs. A sport's board and ladder count
   only accounts with a decided pick in that sport. Leaderboard queries page past the
   1,000-row cap.
+
+## Stats tab, launch splash, H2H tour stop (2026-11-15)
+- **Stats** is its own tab on My Picks (`components/StatsPanel.tsx`, maths in `lib/playerStats.ts`):
+  record, last-10 form strip, runs, strongest/weakest sport, and plain tables by sport, pick type
+  and odds. No bar beside a percentage: the owner called that redundant, and it was.
+- **Launch splash** (`components/BootSplash.tsx`, CSS under "Boot splash" in `globals.css`): the
+  logo redrawn as SVG, bars rising and balls dropping. In the root layout, so cold start only;
+  leaves when the account has loaded (min 1.1s, max 4s). Skipped on sign-in, legal, profile and
+  invite pages.
+- **Onboarding** has a seventh stop on `/pools` that explains head to head without making anyone play.
+- Screens can be checked without signing in: add a throwaway public route, run `next start`, and
+  screenshot with headless Chrome at 520px wide (it will not go narrower on Windows).
