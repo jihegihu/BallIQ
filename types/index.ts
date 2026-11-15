@@ -82,4 +82,7 @@ export type User = {
   picks: UserPick[];
   lastPickDate: string | null;  // ISO date (YYYY-MM-DD), tracks first_daily XP
   currentStreak: number;        // consecutive days with at least one pick
+  // Rating changes that did not come from a pick (head-to-head pool payouts).
+  // The rating chart is rebuilt from pick results, so it needs these as well.
+  eloEvents?: { at: string; delta: number }[];
 };

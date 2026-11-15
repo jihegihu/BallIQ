@@ -94,10 +94,26 @@ export async function GET() {
     await admin.from('users').update({ total_picks: actualPicks }).eq('id', userId);
   }
 
+  // Head-to-head payouts. Read separately and allowed to fail: before
+  // migration-009 the table does not exist, and that must not stop picks
+  // loading.
+  const { data: poolRows } = await admin
+    .from('pool_members')
+    .select('elo_delta, pools(settled_at)')
+    .eq('user_id', userId)
+    .not('elo_delta', 'is', null);
+  const eloEvents = (poolRows ?? [])
+    .map((r) => ({
+      delta: r.elo_delta as number,
+      at: (r.pools as unknown as { settled_at: string | null } | null)?.settled_at ?? null,
+    }))
+    .filter((e): e is { delta: number; at: string } => e.delta !== 0 && !!e.at);
+
   return NextResponse.json({
     picks,
     user: user ? {
       id:            userId,
+      eloEvents,
       username:      user.username ?? username,
       globalElo:     user.global_elo,
       seasonElo:     user.season_elo,

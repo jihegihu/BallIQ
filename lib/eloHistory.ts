@@ -18,9 +18,17 @@ export function buildEloHistory(
   picks: UserPick[],
   currentElo: number,
   days = 30,
+  // Rating changes with no pick behind them — head-to-head pool payouts.
+  // Without these the walk backwards from the current rating lands on the
+  // wrong starting value and the whole curve sits too high or too low.
+  extra: { at: string; delta: number }[] = [],
 ): EloPoint[] {
-  const settled = picks
-    .filter((p) => p.eloDelta != null && p.resolvedAt)
+  const settled = [
+    ...picks
+      .filter((p) => p.eloDelta != null && p.resolvedAt)
+      .map((p) => ({ eloDelta: p.eloDelta, resolvedAt: p.resolvedAt })),
+    ...extra.map((e) => ({ eloDelta: e.delta as number | null, resolvedAt: e.at as string | null | undefined })),
+  ]
     .sort((a, b) => new Date(a.resolvedAt!).getTime() - new Date(b.resolvedAt!).getTime());
 
   if (settled.length === 0) return [];

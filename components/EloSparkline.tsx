@@ -26,10 +26,11 @@ function shortDate(day: string): string {
 export default function EloSparkline({ days = 30 }: { days?: number }) {
   const picks     = useUserStore((s) => s.user.picks);
   const globalElo = useUserStore((s) => s.user.globalElo);
+  const eloEvents = useUserStore((s) => s.user.eloEvents);
 
   const series = useMemo(
-    () => buildEloHistory(picks, globalElo, days),
-    [picks, globalElo, days],
+    () => buildEloHistory(picks, globalElo, days, eloEvents ?? []),
+    [picks, globalElo, days, eloEvents],
   );
 
   if (series.length < 2) return null;

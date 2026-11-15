@@ -9,6 +9,7 @@ import { fetchOdds, fetchScores, CompletedGame, OddsQuotaError } from '@/lib/odd
 import { fetchGameDetails, fetchEspnScores } from '@/lib/espn';
 import { createAdminClient } from '@/lib/supabase';
 import { checkCronAuth } from '@/lib/cronAuth';
+import { settleDuePools, poolSportsAwaitingResults, type SettleSummary } from '@/lib/poolsServer';
 import { calculateEloDelta, getKFactor, START_ELO } from '@/lib/elo';
 import { Match, BetType, ConfidenceLevel, Sport } from '@/types';
 
@@ -293,9 +294,14 @@ async function runSync(fullSweep = false) {
     .from('user_picks')
     .select('sport')
     .eq('outcome', 'pending');
-  const pendingSports = [...new Set(
-    (pendingSportRows ?? []).map((r) => r.sport as Sport | null).filter((s): s is Sport => !!s),
-  )];
+  // A locked head-to-head pool is waiting on results too. Its games nearly
+  // always have ordinary picks on them as well, but settling a pool should not
+  // depend on that, so its sport is folded in here.
+  const poolSports = await poolSportsAwaitingResults(admin);
+  const pendingSports = [...new Set([
+    ...(pendingSportRows ?? []).map((r) => r.sport as Sport | null).filter((s): s is Sport => !!s),
+    ...(poolSports as Sport[]),
+  ])];
 
   let scoresFetchError = '';
   const scoredGames = pendingSports.length === 0
@@ -597,9 +603,21 @@ async function runSync(fullSweep = false) {
     }
   }
 
+  // ── 4. Head-to-head pools ───────────────────────────────────────────────────
+  // After pick settlement, so a pool is paid from ratings that already include
+  // tonight's results. Never allowed to fail the sync: pools are an extra, and
+  // before migration-009 is run the tables do not exist at all.
+  let pools: SettleSummary | null = null;
+  try {
+    pools = await settleDuePools(admin);
+  } catch (err) {
+    console.warn('[sync-odds] pool settlement failed:', (err as Error).message);
+  }
+
   return NextResponse.json({
     synced:   matches.length,
     resolved,
+    ...(pools && (pools.settled > 0 || pools.cancelled > 0) ? { pools } : {}),
     ...(botPicks > 0 ? { botPicks } : {}),
     ...(voided > 0      ? { voided }      : {}),
     ...(espnFilled > 0  ? { espnFilled }  : {}),

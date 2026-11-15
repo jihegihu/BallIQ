@@ -24,6 +24,7 @@ import { dueKinds, SETTLED_GAP_HOURS, type NotifyKind } from '@/lib/notifyWindow
 import { scoreGames, matchupLabel, type ScorableGame } from '@/lib/bigGame';
 import { bigGameMessage, digestMessage, settledMessage } from '@/lib/notifyCopy';
 import { isLocked } from '@/lib/lock';
+import { sendPoolPushes } from '@/lib/poolPushes';
 import { summarizeRecord } from '@/lib/record';
 import {
   calculateEloDelta, getKFactor, impliedProbToEventElo,
@@ -81,6 +82,19 @@ export async function GET(req: NextRequest) {
       .map((u) => [u.id as string, u]),
   );
 
+  // ── Head-to-head pools: invitations and results ─────────────────────────────
+  // Done first and reported on every exit below. The daily kinds return early
+  // whenever no device is inside one of their windows, and a pool invite has
+  // nothing to do with those windows.
+  let poolPushes = { invites: 0, results: 0 };
+  try {
+    const sent = await sendPoolPushes(admin, tokens, new Set(enabled.keys()), now);
+    poolPushes = { invites: sent.invites, results: sent.results };
+    if (sent.dead.length > 0) await admin.from('push_tokens').delete().in('token', sent.dead);
+  } catch (err) {
+    console.warn('[notify] pool pushes failed:', (err as Error).message);
+  }
+
   // ── Group devices by (user, local day, due slot) ────────────────────────────
   // Keyed per user rather than per token: two phones in different timezones
   // both get it, but the once-per-day ledger is per account, so whichever
@@ -105,7 +119,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (jobs.size === 0) {
-    return NextResponse.json({ ok: true, reason: 'no device is inside a send window' });
+    return NextResponse.json({ ok: true, reason: 'no device is inside a send window', poolPushes });
   }
 
   // ── Claim each slot BEFORE sending ──────────────────────────────────────────
@@ -135,7 +149,7 @@ export async function GET(req: NextRequest) {
           { ok: false, error: blocked, hint: 'has supabase/migration-008-settled-slots.sql been run?' },
           { status: 500 },
         )
-      : NextResponse.json({ ok: true, reason: 'every due slot is already claimed' });
+      : NextResponse.json({ ok: true, reason: 'every due slot is already claimed', poolPushes });
   }
 
   const dead: string[] = [];
@@ -323,6 +337,7 @@ export async function GET(req: NextRequest) {
     sentSettled,
     sentDigest,
     skipped,
+    poolPushes,
     prunedTokens: dead.length,
   });
 }

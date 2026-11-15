@@ -118,3 +118,21 @@ export function digestMessage(opts: {
 
   return { title, body };
 }
+
+/** A friend has invited you to a head-to-head pool. */
+export function poolInviteMessage(opts: { from: string; title: string; stake: number }): Message {
+  return {
+    title: `${opts.from} invited you`,
+    body:  `${opts.title}. ${opts.stake} Elo to enter.`,
+  };
+}
+
+/** A pool you played in has been settled. */
+export function poolResultMessage(opts: { title: string; delta: number; correct: number }): Message {
+  const { title, delta, correct } = opts;
+  const elo = delta === 0 ? 'No Elo moved' : `${delta > 0 ? '+' : ''}${delta} Elo`;
+  return {
+    title: `${title} final`,
+    body:  `${elo}. ${correct} correct.`,
+  };
+}
