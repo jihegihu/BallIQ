@@ -74,3 +74,38 @@ Two pushes a day, at most, sent on each DEVICE's local clock from the hourly
 - Slots are claimed in `notification_log` **before** sending, so a crash skips a
   notification rather than duplicating one. `rank_snapshots` exists because rank,
   unlike rating, cannot be reconstructed after the fact.
+
+## Head-to-head pools (2026-11-14)
+Friends pick the winner of every game on one slate; most correct wins. H2H tab → `/pools`.
+Requires `supabase/migration-009-pools.sql`. Until it is run the H2H tab says it is being
+set up and nothing else is affected (every read of the new tables is allowed to fail).
+
+- **The prize is a pot, not a bonus.** Everyone stakes 50 Elo (`POOL_STAKE`), winners split
+  what the others staked, so changes sum to zero: 6 players → +250 / −50. Ties split,
+  a skipped game is a miss, nobody goes below the rating floor. Never pay a prize from
+  nowhere — that is the inflation removed from `lib/elo.ts`.
+- **Rules:** 20 settled picks to play, one pool per sport per week, 2–10 players,
+  invites only to people the creator follows, in-app only. Others' picks are hidden
+  until that game starts.
+- **Slates** are rebuilt server-side from the schedule (`slateOptions` in `lib/pools.ts`).
+  NFL and EPL: a Tuesday-to-Monday week. NBA: one night with 5+ games, or that night
+  plus the next. The odds feed lists NBA only ~1 day ahead, so NBA pools are same-day.
+- **Settlement** (`settleDuePools` in `lib/poolsServer.ts`) runs at the end of
+  `/api/sync-odds`. The pool is claimed before any rating moves; it waits 72h for a
+  postponed game, then settles on the games that finished; one player at lock → cancelled.
+- **Pushes** (invite, final result) go out from `/api/notify`, 9am–9pm local only.
+- Rules are pure functions in `lib/pools.ts`; the payout and settlement checks are listed in
+  commit c257f11.
+
+## Onboarding walkthrough (2026-11-15)
+`components/TourCoach.tsx` + `lib/tourStore.ts`. Replaced the welcome slides. Six steps on
+the real screens: choose a sport → make 2 real picks → pending → example results/stats →
+rankings → ladder. The bottom nav is locked while it runs; Skip appears after the first
+pick. Pages follow it by deriving their tab from the tour step (board filter, picks tab,
+rankings view). State is saved per account id. Accounts with picks never see it; Account →
+"Replay" restarts it.
+
+## Creator badge
+`lib/creator.ts` holds the creator's user id; `CreatorBadge` renders beside that account's
+name. Keyed on id because usernames re-sync from Clerk on every load (`/api/picks` GET), so
+a rename done only in Supabase is overwritten — change the name in the Clerk dashboard.
