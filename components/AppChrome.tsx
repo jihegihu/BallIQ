@@ -5,12 +5,13 @@ import EloHeader from '@/components/EloHeader';
 import BottomNav from '@/components/BottomNav';
 import TourCoach, { TourSpacer } from '@/components/TourCoach';
 import AnalyticsBeacon from '@/components/AnalyticsBeacon';
+import { InviteAcceptor } from '@/components/InviteRemember';
 import PushRegistrar from '@/components/PushRegistrar';
 import PullToRefresh from '@/components/PullToRefresh';
 
 // Routes where the app shell (Elo bar + bottom nav) should not render —
 // auth screens and public legal pages viewed by signed-out visitors.
-const BARE_ROUTES = ['/sign-in', '/sign-up'];
+const BARE_ROUTES = ['/sign-in', '/sign-up', '/invite'];
 
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -35,6 +36,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <PushRegistrar />
       <TourCoach />
       <AnalyticsBeacon />
+      <InviteAcceptor />
       <EloHeader />
       {/* reserves space for the fixed top bar (h-12 + notch safe area) */}
       <PullToRefresh>

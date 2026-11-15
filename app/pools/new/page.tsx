@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/Icon';
 import { POOL_STAKE, POOL_MAX_MEMBERS, potentialWin } from '@/lib/pools';
+import { InviteButton } from '@/components/ShareButtons';
 
 type Option = {
   key: string;
@@ -160,6 +161,7 @@ export default function NewPoolPage() {
           <p className="text-[11px] text-dim mt-1">
             Add friends by username under Ranks, then Friends. You can still start the pool and invite them after.
           </p>
+          <InviteButton className="w-full mt-3" />
         </div>
       ) : (
         <div className="bg-card border border-rim rounded-2xl mb-5 divide-y divide-rim">

@@ -9,6 +9,7 @@ import Icon from '@/components/Icon';
 import TeamAvatar from '@/components/TeamAvatar';
 import CreatorBadge from '@/components/CreatorBadge';
 import { hapticImpact } from '@/lib/haptics';
+import { ShareCardButton } from '@/components/ShareButtons';
 
 type Side = 'home' | 'away' | 'draw';
 
@@ -314,6 +315,16 @@ export default function PoolPage() {
           );
         })}
       </div>
+
+      {pool.phase === 'settled' && playing && (
+        <ShareCardButton
+          card={`/api/share/card?kind=pool&id=${pool.id}`}
+          kind="pool"
+          text={`${pool.title} on BallIQ.`}
+          label="Share result"
+          className="w-full mb-5"
+        />
+      )}
 
       {/* Creator: invite more, while it is still open */}
       {me.isCreator && open && invitable.length > 0 && (

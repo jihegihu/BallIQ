@@ -7,6 +7,7 @@ import TierStanding, { type Standing } from '@/components/TierStanding';
 import { tierFor } from '@/lib/tiers';
 import CreatorBadge from '@/components/CreatorBadge';
 import { useTourStore } from '@/lib/tourStore';
+import { InviteButton, ShareCardButton } from '@/components/ShareButtons';
 
 type Scope = 'global' | 'friends';
 /** What the page is showing. 'climb' is a view, not a server scope: the API
@@ -176,6 +177,7 @@ export default function LeaderboardPage() {
             </button>
           </div>
           {addMsg && <p className="text-[11px] text-sub mt-1.5 px-1">{addMsg}</p>}
+          <InviteButton className="w-full mt-2" />
         </form>
       )}
 
@@ -236,6 +238,15 @@ export default function LeaderboardPage() {
             standing={standing}
             sportLabel={sport === 'global' ? undefined : TABS.find((t) => t.key === sport)?.label}
           />
+          {sport === 'global' && standing?.myElo != null && (
+            <ShareCardButton
+              card="/api/share/card?kind=rank"
+              kind="rank"
+              text="My BallIQ rating."
+              label="Share my rating"
+              className="w-full mt-3"
+            />
+          )}
         </div>
       )}
 
