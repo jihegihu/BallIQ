@@ -57,21 +57,6 @@ const SPORT_LABEL: Partial<Record<Sport, string>> = {
 };
 function sportName(sport: Sport): string { return SPORT_LABEL[sport] ?? sport; }
 
-function fmtTime(iso: string) {
-  try {
-    const d        = new Date(iso);
-    const today    = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const dayLabel =
-      d.toDateString() === today.toDateString()    ? 'Today' :
-      d.toDateString() === tomorrow.toDateString() ? 'Tomorrow' :
-      d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
-    return `${dayLabel} · ${time}`;
-  } catch { return iso; }
-}
-
 /** Just the kick-off time. The day is said once, by the group heading above. */
 function fmtClock(iso: string) {
   try {
@@ -84,13 +69,13 @@ function fmtClock(iso: string) {
 // hours away looked exactly as urgent as one starting in ten minutes. Grouping
 // by when says what needs a decision now, and the later groups start folded so
 // the first screen is the handful of games that actually do.
-type GroupKey = 'soon' | 'today' | 'tomorrow' | 'later';
-const GROUPS: { key: GroupKey; label: string }[] = [
-  { key: 'soon',     label: 'Starting soon' },
-  { key: 'today',    label: 'Later today' },
-  { key: 'tomorrow', label: 'Tomorrow' },
-  { key: 'later',    label: 'Coming up' },
-];
+//
+// Anything past tomorrow gets a group per day. It was one "Coming up" bucket,
+// which did nothing for a sport that plays at the weekend: every Premier
+// League game landed in it, and since it was the only group it opened by
+// default — one flat list of fourteen under a single heading.
+type Group = { key: string; label: string; games: Match[] };
+
 /** "Soon" is the next few hours, whatever the calendar says. */
 const SOON_MS = 3 * 60 * 60 * 1000;
 /** With this few games there is nothing to fold away. */
@@ -120,7 +105,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
   const [nowMs] = useState(() => Date.now());
 
   // Groups the user has opened or closed by hand; unset means "use the default".
-  const [toggled, setToggled] = useState<Partial<Record<GroupKey, boolean>>>({});
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
   // Picked games the user has opened back up to change or remove the pick.
   const [reopened, setReopened] = useState<Set<string>>(new Set());
   // Games picked a moment ago, each with the time it may tuck itself away.
@@ -307,21 +292,27 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
         )}
 
         {onClient && (() => {
-          const groupOf = (m: Match): GroupKey => {
-            const t = new Date(m.commenceTime).getTime();
-            if (t - nowMs <= SOON_MS) return 'soon';
-            const day = new Date(t).toDateString();
-            if (day === new Date(nowMs).toDateString()) return 'today';
-            if (day === new Date(nowMs + 86_400_000).toDateString()) return 'tomorrow';
-            return 'later';
+          // In kick-off order, so the groups come out in order too.
+          const groups: Group[] = [];
+          const add = (key: string, label: string, m: Match) => {
+            const last = groups[groups.length - 1];
+            if (last?.key === key) last.games.push(m);
+            else groups.push({ key, label, games: [m] });
           };
-          const groups = GROUPS
-            .map((g) => ({ ...g, games: visible.filter((m) => groupOf(m) === g.key) }))
-            .filter((g) => g.games.length > 0);
+          const today    = new Date(nowMs).toDateString();
+          const tomorrow = new Date(nowMs + 86_400_000).toDateString();
+          for (const m of [...visible].sort((a, b) => a.commenceTime.localeCompare(b.commenceTime))) {
+            const d   = new Date(m.commenceTime);
+            const day = d.toDateString();
+            if (d.getTime() - nowMs <= SOON_MS) add('soon', 'Starting soon', m);
+            else if (day === today)             add('today', 'Later today', m);
+            else if (day === tomorrow)          add('tomorrow', 'Tomorrow', m);
+            else add(day, d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), m);
+          }
 
           // Open by default: anything today, and always the first group, so a
-          // board whose next game is tomorrow does not open on a closed list.
-          const openByDefault = (key: GroupKey) =>
+          // board whose next game is days away does not open on a closed list.
+          const openByDefault = (key: string) =>
             visible.length <= FOLD_ABOVE || key === 'soon' || key === 'today' || key === groups[0]?.key;
 
           return groups.map((group, gi) => {
@@ -347,7 +338,7 @@ export default function MoneylineGrid({ matches }: { matches: Match[] }) {
                     {group.games.map((match) => {
             const pick   = getPendingMoneyline(match.id);
             const locked = isLocked(match.commenceTime);
-            const when   = group.key === 'later' ? fmtTime(match.commenceTime) : fmtClock(match.commenceTime);
+            const when   = fmtClock(match.commenceTime);
 
             // A game that already has a pick on it folds down to one line:
             // the decision is made, so it no longer needs a full card's worth
